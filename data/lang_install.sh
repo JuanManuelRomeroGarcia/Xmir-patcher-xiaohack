@@ -70,7 +70,7 @@ if [ $INSTALL_METHOD == 2 ]; then
 fi
 
 # set main lang
-uci set luci.main.lang=en
+uci set luci.main.lang=es
 #uci commit luci
 
 # run patch
