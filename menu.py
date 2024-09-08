@@ -19,6 +19,7 @@ def get_header(delim, suffix = ''):
   header += ' XiaoHack.es ' + '\n'
   header += '\n'
   header += ' Xiaomi XMiR Patcher (ES) {} \n'.format(suffix)
+  header += ' (Ver. 1.0) {} \n'.format(suffix)
   header += '\n'
   return header
 
