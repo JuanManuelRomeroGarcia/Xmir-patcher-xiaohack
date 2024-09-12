@@ -31,7 +31,7 @@ def menu1_show():
   print(' 3 - Leer información completa del dispositivo')
   print(' 4 - Crear una copia de seguridad completa')
   print(' 5 - Instalar idiomas ES/EN/RU')
-  print(' 6 - Instalar bootloader Breed')
+  print(' 6 - Potencia de Antenas Wifi')
   print(' 7 - Instalar firmware (desde el directorio "firmware")')
   print(' 8 - {{{ Otras funciones }}}')
   print(' 9 - [[ Reiniciar dispositivo ]]')
@@ -46,7 +46,7 @@ def menu1_process(id):
   if id == 3: return "read_info.py"
   if id == 4: return "create_backup.py"
   if id == 5: return "install_lang.py"
-  if id == 6: return ["install_bl.py", "breed"]
+  if id == 6: return "power.py"
   if id == 7: return "install_fw.py"
   if id == 8: return "__menu2"
   if id == 9: return "reboot.py"
@@ -63,7 +63,7 @@ def menu2_show():
   print(' 5 - Desinstalar idiomas ES/EN/RU')
   print(' 6 - Configurar la dirección de arranque del kernel')
   print(' 7 - Instalar SSH permanente')
-  print(' 8 - Potencia de Antenas Wifi')
+  print(' 8 - Instalar bootloader Breed')
   print(' 9 - [[ Reiniciar dispositivo ]]')
   print(' 0 - Volver al menú principal')
 
@@ -76,7 +76,7 @@ def menu2_process(id):
   if id == 5: return [ "install_lang.py", "uninstall" ]
   if id == 6: return "activate_boot.py"
   if id == 7: return "install_ssh.py"
-  if id == 8: return "power.py"
+  if id == 8: return ["install_bl.py", "breed"]
   if id == 9: return "reboot.py"
   if id == 0: return "__menu1" 
   return None
