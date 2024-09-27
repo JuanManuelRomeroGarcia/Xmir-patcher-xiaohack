@@ -106,7 +106,6 @@ mi(0,  "RD13")          # Xiaomi Mesh System AC1200
 # https://wikidevi.wi-cat.ru/List_of_Xiaomi_Wireless_Devices
 # routers with unknown device number
 
-
 mi(0, "BE36M")
 mi(0, "BE306")
 
@@ -129,3 +128,4 @@ def get_model_by_id(id):
             if item['id'] == id:
                 return item
     return { }
+
