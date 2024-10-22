@@ -112,6 +112,10 @@ mi(99, "RN01")          # BE3600 Pro (CN)
 mi(100,"RN06")          # INT
 
 # https://wikidevi.wi-cat.ru/List_of_Xiaomi_Wireless_Devices
+# routers with unknown device number
+
+mi(0,  "RN09")          # INT  # https://home.miot-spec.com/s/rn09
+
 
 def get_modelid_by_name(name):
     name = name.upper()
@@ -131,4 +135,3 @@ def get_model_by_id(id):
             if item['id'] == id:
                 return item
     return { }
-
