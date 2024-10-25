@@ -120,7 +120,7 @@ def customize_rc_local_content(device_name):
         return common_content + RA70_command + "\nexit 0"
     elif model_id == 24:  # R3600
         return common_content + R3600_command + "\nexit 0"
-    elif model_id == [82, 29]:  # RA82 , RM1800
+    elif model_id == [45, 29]:  # RA82 , RM1800
         return common_content + RM1800_command + "\nexit 0"
     else:
         # Si el modelo no está soportado
