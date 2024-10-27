@@ -19,7 +19,7 @@ def get_header(delim, suffix = ''):
   header += ' XiaoHack.es ' + '\n'
   header += '\n'
   header += ' Xiaomi XMiR Patcher (ES) {} \n'.format(suffix)
-  header += ' (Ver. 1.7) {} \n'.format(suffix)
+  header += ' (Ver. 1.8) {} \n'.format(suffix)
   header += '\n'
   return header
 
@@ -64,7 +64,7 @@ def menu2_show():
   print(' 6 - Configurar la dirección de arranque del kernel')
   print(' 7 - Instalar SSH permanente')
   print(' 8 - Instalar bootloader Breed')
-  print(' 9 - [[ Reiniciar dispositivo ]]')
+  print(' 9 - [[ Add Mesh ]]')
   print(' 0 - Volver al menú principal')
 
 
@@ -77,7 +77,7 @@ def menu2_process(id):
   if id == 6: return "activate_boot.py"
   if id == 7: return "install_ssh.py"
   if id == 8: return ["install_bl.py", "breed"]
-  if id == 9: return "reboot.py"
+  if id == 9: return ["addmesh.py", gw.ip_addr]
   if id == 0: return "__menu1" 
   return None
 
