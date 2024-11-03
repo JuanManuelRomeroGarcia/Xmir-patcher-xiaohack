@@ -12,6 +12,98 @@ print(os.getcwd())
 
 gw = gateway.Gateway()
 
+def mostrar_menu():
+    """Función para mostrar el menú y manejar las opciones del usuario según el modelo del dispositivo."""
+    
+    # Detectar el dispositivo y obtener el nombre y modelo
+    gw.detect_device()
+    device_name = gw.device_name
+    model_id = xqmodel.get_modelid_by_name(device_name)
+    
+    # Mostrar el modelo detectado
+    print(f"Modelo detectado: {device_name} (ID: {model_id})\n")
+
+    # Definir opciones del menú base en orden
+    menu_options = [
+        "1. Cambiar potencia de transmisión de wl0 (5GHz)",
+        "2. Cambiar potencia de transmisión de wl1 (2.4GHz)",
+        "3. Cambiar potencia de transmisión de wl2 (5GHz Gaming)",  # Solo para RA70
+        "4. Ver potencia de transmisión de wl0 (5GHz)",
+        "5. Ver potencia de transmisión de wl1 (2.4GHz)",
+        "6. Ver potencia de transmisión de wl2 (5GHz Gaming)",  # Solo para RA70
+        "7. Cambiar potencia de transmisión de todas las antenas",
+        "8. Ver potencia de transmisión de todas las antenas",
+        "9. Actualizar archivo rc.local con los valores Maximos del modelo",
+        "10. Configurar país a EU para RA82",  # Solo para RA82
+        "0. Salir"
+    ]
+
+    # Eliminar opciones específicas según el modelo
+    if model_id != 37:  # Si no es RA70, quitar opciones de wl2
+        menu_options.remove("3. Cambiar potencia de transmisión de wl2 (5GHz Gaming)")
+        menu_options.remove("6. Ver potencia de transmisión de wl2 (5GHz Gaming)")
+    if model_id != 45:  # Si no es RA82, quitar la opción específica para RA82
+        menu_options.remove("10. Configurar país a EU para RA82")
+
+    # Mostrar el menú específico del modelo detectado
+    while True:
+        print("\n--- Menú de Potencia de Antenas ---")
+        print("-----------------------------------")
+        for option in menu_options:
+            print(option)
+        print("-----------------------------------")
+        
+        opcion = input("Elige una opción: ")
+
+        # Procesar la opción seleccionada
+        if opcion == '1':
+            set_tx_power("wl0")  # Cambiar potencia de wl0
+        elif opcion == '2':
+            set_tx_power("wl1")  # Cambiar potencia de wl1
+        elif opcion == '3' and model_id == 37:
+            set_tx_power("wl2")  # Cambiar potencia de wl2 (solo RA70)
+        elif opcion == '4':
+            get_tx_power("wl0")  # Ver potencia de wl0
+        elif opcion == '5':
+            get_tx_power("wl1")  # Ver potencia de wl1
+        elif opcion == '6' and model_id == 37:
+            get_tx_power("wl2")  # Ver potencia de wl2 (solo RA70)
+        elif opcion == '7':
+            set_tx_power()  # Cambiar potencia de todas las antenas
+        elif opcion == '8':
+            get_tx_power()  # Ver potencia de todas las antenas
+        elif opcion == '9':
+            update_rc_local()  # Actualizar archivo rc.local con los valores personalizados
+        elif opcion == '10' and model_id == 45:
+            opcion_especifica_ra82()  # Ejecutar la opción específica para RA82
+        elif opcion == '0':
+            print("Saliendo del programa.")
+            break
+        else:
+            print("Opción no válida. Por favor, elige una opción válida.")
+
+
+def opcion_especifica_ra82():
+    """Función específica para el modelo RA82 que configura el país a EU mediante SSH."""
+    try:
+        # Ejecutar comandos para configurar el país
+        cmds = [
+            'uci set wireless.wifi0.country=EU',
+            'uci set wireless.wifi1.country=EU',
+            'uci commit wireless'
+        ]
+        
+        for cmd in cmds:
+            output = gw.run_cmd_with_output(cmd)
+            if output:
+                print(f"Resultado de '{cmd}': {output}")
+            else:
+                print(f"Comando '{cmd}' ejecutado exitosamente.")
+                
+    except Exception as e:
+        print(f"Error al ejecutar los comandos para RA82: {str(e)}")
+
+
 def get_tx_power(interface=None):
     """Función para obtener la potencia de transmisión de una interfaz de red o de todas las interfaces"""
     
@@ -120,7 +212,7 @@ def customize_rc_local_content(device_name):
         return common_content + RA70_command + "\nexit 0"
     elif model_id == 24:  # R3600
         return common_content + R3600_command + "\nexit 0"
-    elif model_id == [45, 29]:  # RA82 , RM1800
+    elif model_id in [45, 29]:  # RA82 , RM1800
         return common_content + RM1800_command + "\nexit 0"
     else:
         # Si el modelo no está soportado
@@ -129,53 +221,6 @@ def customize_rc_local_content(device_name):
         print("Si su modelo no es soportado, mande un email a administracion@xiaohack.es con el modelo para su investigación.")
         return None
 
-
-def mostrar_menu():
-    """Función para mostrar el menú y manejar las opciones del usuario"""
-    while True:
-        print("\n--- Menú de Potencia de Antenas ---")
-        print("-----------------------------------")
-        print("1. Cambiar potencia de transmisión de wl0 (5GHz)")
-        print("2. Cambiar potencia de transmisión de wl1 (2.4GHz)")
-        print("3. Cambiar potencia de transmisión de wl2 (5GHz Gaming)")
-        print("--- ---")
-        print("4. Ver potencia de transmisión de wl0 (5GHz)")
-        print("5. Ver potencia de transmisión de wl1 (2.4GHz)")
-        print("6. Ver potencia de transmisión de wl2 (5GHz Gaming)")
-        print("\n--- Cambiar Todas ---")
-        print("7. Cambiar potencia de transmisión de todas las antenas")
-        print("\n--- Ver todas  ---")
-        print("8. Ver potencia de transmisión de todas las antenas")
-        print("\n--- Actualizar rc.local ---")
-        print("9. Actualizar archivo rc.local con los valores Maximos del modelo")
-        print("--------------------------------")
-        print("0. Salir")
-
-        opcion = input("Elige una opción: ")
-
-        if opcion == '1':
-            set_tx_power("wl0")  # Cambiar potencia de wl0
-        elif opcion == '2':
-            set_tx_power("wl1")  # Cambiar potencia de wl1
-        elif opcion == '3':
-            set_tx_power("wl2")  # Cambiar potencia de wl2
-        elif opcion == '4':
-            get_tx_power("wl0")  # Ver potencia de wl0
-        elif opcion == '5':
-            get_tx_power("wl1")  # Ver potencia de wl1
-        elif opcion == '6':
-            get_tx_power("wl2")  # Ver potencia de wl2
-        elif opcion == '7':
-            set_tx_power()  # Cambiar potencia de todas las antenas
-        elif opcion == '8':
-            get_tx_power()  # Ver potencia de todas las antenas
-        elif opcion == '9':
-            update_rc_local()  # Actualizar archivo rc.local con los valores personalizados
-        elif opcion == '0':
-            print("Saliendo del programa.")
-            break
-        else:
-            print("Opción no válida. Por favor, elige una opción del 0 al 9.")
 
 if __name__ == "__main__":
     mostrar_menu()
