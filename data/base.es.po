@@ -67,6 +67,9 @@ msgstr "Después de activar el firewall IPv6, se prohibirá que todas las redes 
 msgid "全LAN口"
 msgstr "Puerto LAN completo"
 
+msgid "稳定版"
+msgstr "Versión estable"
+
 msgid "模式"
 msgstr "Modelo"
 
