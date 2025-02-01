@@ -191,7 +191,7 @@ class Gateway():
       die("You need to make the initial configuration in the WEB of the device!")
     self.model_id = self.get_modelid_by_name(self.device_name)
     self.status = -1
-    x = page('a href="/cgi-bin/luci/web/init/hello')
+    x = page.find('a href="/cgi-bin/luci/web/init/hello')
     if (x > 10):
       die("You need to make the initial configuration in the WEB of the device!")
     self.status = 1
