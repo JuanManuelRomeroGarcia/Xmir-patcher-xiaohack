@@ -19,7 +19,7 @@ def get_header(delim, suffix = ''):
   header += ' XiaoHack.es ' + '\n'
   header += '\n'
   header += ' Xiaomi XMiR Patcher (ES) {} \n'.format(suffix)
-  header += ' (Ver. 2.3) {} \n'.format(suffix)
+  header += ' (Ver. 2.6) {} \n'.format(suffix)
   header += '\n'
   return header
 
@@ -56,7 +56,7 @@ def menu1_process(id):
 
 def menu2_show():
   print(get_header('-', '(funciones extendidas)'))
-  print(' 1 - Configurar la dirección IP predeterminada del dispositivo')
+  print(' 1 - Establecer dirección IP (valor actual: {})'.format(gw.ip_addr))
   print(' 2 - Cambiar la contraseña de root')
   print(' 3 - Leer dmesg y syslog')
   print(' 4 - Crear una copia de seguridad de la partición especificada')
@@ -69,7 +69,9 @@ def menu2_show():
 
 
 def menu2_process(id):
-  if id == 1: return "set_def_ipaddr.by"
+  if id == 1:
+    ip_addr = input("Enter device IP-address: ")
+    return [ "gateway.py", ip_addr ]
   if id == 2: return "passw.py"
   if id == 3: return "read_dmesg.py"
   if id == 4: return [ "create_backup.py", "part" ]

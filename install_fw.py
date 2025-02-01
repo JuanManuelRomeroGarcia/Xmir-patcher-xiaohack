@@ -1080,6 +1080,13 @@ class XqFlash():
             if not rc:
                 die(f'Cannot change nvram parameters!')
 
+        if self.install_method == 400 and not self.img_stock:
+                    if fw_img.cmd and self.install_fw_num and self.install_fw_num == 1:
+                        print(f'ADVERTENCIA: No es seguro escribir una imagen initramfs en la partición"{fw_img.partname}"!')
+                        print(f'RECOMENDACIÓN: Cambiar la partición UBI activa a "ubi1"')
+                        print(f'RECOMENDACIÓN: Conéctese al dispositivo -> opción 8 -> opción 6 -> Ingrese el número de kernel = 1 -> reiniciar')
+                        sys.exit(45)
+
         if fw_img.cmd:
             self.flash_data_to_mtd('firmware', fw_img, timeout = 60)
         

