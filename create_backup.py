@@ -16,10 +16,24 @@ dev.get_part_table()
 if not dev.partlist or len(dev.partlist) <= 1:
     die("¡La lista de particiones está vacía!")
 
-fn_dir = 'backups/'
+# Obtener el modelo del router y el número de serie
+sn = gw.device_info.get('id', None)
+if not gw.device_name:
+    die("No se pudo obtener el modelo del router.")
+if not sn:
+    die("No se pudo obtener el número de serie (SN) del router.")
+
+# Eliminar caracteres no alfanuméricos para nombres de carpetas seguros
+router_model = ''.join(e for e in gw.device_name if e.isalnum())
+sn_sanitized = sn.replace('/', '_')
+
+# Crear la carpeta basada en el modelo del router y SN
+fn_dir = f'backups/{router_model}/{sn_sanitized}/'
 fn_old = fn_dir + 'full_dump.old'
 fn_local = fn_dir + 'full_dump.bin'
 fn_remote = '/tmp/mtd_dump.bin'
+
+os.makedirs(fn_dir, exist_ok=True)
 
 a_part = None
 pid = None
@@ -47,8 +61,6 @@ if len(sys.argv) > 1:
         fn_old = fn_dir + 'mtd{id}_{name}.old'.format(id=p, name=name)
         fn_local = fn_dir + 'mtd{id}_{name}.bin'.format(id=p, name=name)
         pid = p
-
-os.makedirs(fn_dir, exist_ok=True)
 
 if pid is None and a_part != 'a':
     for p, part in enumerate(dev.partlist):
