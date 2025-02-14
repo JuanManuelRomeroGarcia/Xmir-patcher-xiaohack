@@ -8,7 +8,7 @@ import xmir_base
 import gateway
 import xqmodel
 
-print(os.getcwd())
+#print(os.getcwd())
 
 gw = gateway.Gateway()
 
