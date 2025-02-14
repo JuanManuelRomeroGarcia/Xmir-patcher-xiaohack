@@ -35,6 +35,7 @@ def mostrar_menu():
         "8. Ver potencia de transmisión de todas las antenas",
         "9. Actualizar archivo rc.local con los valores Maximos del modelo",
         "10. Configurar país a EU para RA82",  # Solo para RA82
+        "11. Configurar país a CN Wifi.0 para RA70",
         "0. Salir"
     ]
 
@@ -42,6 +43,7 @@ def mostrar_menu():
     if model_id != 37:  # Si no es RA70, quitar opciones de wl2
         menu_options.remove("3. Cambiar potencia de transmisión de wl2 (5GHz Gaming)")
         menu_options.remove("6. Ver potencia de transmisión de wl2 (5GHz Gaming)")
+        menu_options.remove("11. Configurar país a CN Wifi.0 para RA70")
     if model_id != 45:  # Si no es RA82, quitar la opción específica para RA82
         menu_options.remove("10. Configurar país a EU para RA82")
 
@@ -76,6 +78,8 @@ def mostrar_menu():
             update_rc_local()  # Actualizar archivo rc.local con los valores personalizados
         elif opcion == '10' and model_id == 45:
             opcion_especifica_ra82()  # Ejecutar la opción específica para RA82
+        elif opcion == '11' and model_id == 37:
+            opcion_especifica_ra70()  # Ejecutar la opción específica para RA82
         elif opcion == '0':
             print("Saliendo del programa.")
             break
@@ -103,6 +107,27 @@ def opcion_especifica_ra82():
     except Exception as e:
         print(f"Error al ejecutar los comandos para RA82: {str(e)}")
 
+def opcion_especifica_ra70():
+    """Función específica para el modelo RA82 que configura el país a EU mediante SSH."""
+    try:
+        # Ejecutar comandos para configurar el país
+        cmds = [
+            'uci set wireless.wifi0.country=CN',
+            'uci set wireless.wifi1.country=EU',
+            'uci set wireless.wifi2.country=EU',
+            'uci set wireless.wifi3.country=US',
+            'uci commit wireless'
+        ]
+        
+        for cmd in cmds:
+            output = gw.run_cmd_with_output(cmd)
+            if output:
+                print(f"Resultado de '{cmd}': {output}")
+            else:
+                print(f"Comando '{cmd}' ejecutado exitosamente.")
+                
+    except Exception as e:
+        print(f"Error al ejecutar los comandos para RA70: {str(e)}")
 
 def get_tx_power(interface=None):
     """Función para obtener la potencia de transmisión de una interfaz de red o de todas las interfaces"""
@@ -140,8 +165,27 @@ def get_tx_power(interface=None):
 
 def set_tx_power(interface=None):
     """Función para cambiar la potencia de transmisión de una interfaz de red o todas las interfaces"""
-    interfaces = ["wl0", "wl1", "wl2"] if interface is None else [interface]
     
+    # Detectar el modelo antes de cambiar la potencia
+    gw.detect_device()
+    model_id = xqmodel.get_modelid_by_name(gw.device_name)
+
+    # Modelos permitidos para modificar wl2
+    modelos_wl2 = [37, 70 ]  # RA70 y BE7000
+
+    # Si no es un modelo permitido, evitar que se modifique wl2
+    if model_id not in modelos_wl2 and interface == "wl2":
+        print(f"Error: El modelo detectado ({gw.device_name}) no admite cambios en wl2 (5GHz Gaming).")
+        return
+
+    # Si no se especifica interfaz, seleccionar wl0 y wl1 (wl2 solo si el modelo es compatible)
+    if interface is None:
+        interfaces = ["wl0", "wl1"]
+        if model_id in modelos_wl2:
+            interfaces.append("wl2")  # Agregar wl2 solo si el modelo está en la lista
+    else:
+        interfaces = [interface]
+
     potencia = input(f"Introduce la potencia de transmisión (por ejemplo, 20): ")
     if not potencia.isdigit():
         print("Por favor, introduce un valor numérico válido para la potencia.")
@@ -159,6 +203,7 @@ def set_tx_power(interface=None):
                 print(f"Potencia de transmisión de {iface} cambiada exitosamente a {potencia}, aunque no hay salida del comando.")
         except Exception as e:
             print(f"Error al ejecutar el comando para {iface}: {str(e)}")
+
 
 
 def update_rc_local():
@@ -193,7 +238,7 @@ def customize_rc_local_content(device_name):
     
     # Comandos específicos por ID de modelo
     RA70_command = """
-(sleep 60;iwconfig wl0 txpower 30;iwconfig wl1 txpower 30;iwconfig wl2 txpower 30;uci set wireless.wifi0.country=EU; uci set wireless.wifi1.country=EU; uci set wireless.wifi2.country=EU; uci commit wireless)&
+(sleep 60;iw reg set US; iwconfig wl0 txpower 30; iwconfig wl1 txpower 30; iwconfig wl2 txpower 30; iwconfig wl3 txpower 31; uci set wireless.wifi0.country=CN; uci set wireless.wifi1.country=EU; uci set wireless.wifi2.country=EU; uci set wireless.wifi3.country=US; uci commit wireless)&
 """
     
     R3600_command = """
