@@ -252,13 +252,13 @@ class Gateway():
   def web_login(self, timeout = 4):
     self.stok = None
     if not self.nonce_key or not self.mac_address:
-      die("Xiaomi Mi Wi-Fi device is wrong model or not the stock firmware in it.")
+      die("El dispositivo Xiaomi Mi Wi-Fi es un modelo incorrecto o no el firmware de stock en él.")
     dtype = 0 # 0: Web, 1: Android, 2: iOS, 3: Mac, 4: PC 
     device = self.mac_address
     nonce = "{}_{}_{}_{}".format(dtype, device, int(time.time()), random.randint(1000, 10000))
     web_pass = self.webpassword
     if not web_pass:
-      web_pass = input("Enter device WEB password: ")
+      web_pass = input("Introduzca la contraseña de la interfaz WEB: ")
     account_str = (web_pass + self.nonce_key).encode('utf-8')
     account_str = self.xqhash(account_str)
     password = (nonce + account_str).encode('utf-8')
@@ -270,7 +270,7 @@ class Gateway():
       stok = re.findall(r'"token":"(.*?)"', text)[0]
     except Exception:
       self.webpassword = ""
-      die("WEB password is not correct! (encryptmode = {})".format(self.encryptmode))
+      die("¡La contraseña WEB no es correcta!  (encryptmode = {})".format(self.encryptmode))
     self.webpassword = web_pass
     self.stok = stok
     return stok
@@ -624,7 +624,7 @@ class Gateway():
         plist.append(port)
     if not plist:
       if verbose >= 2:
-        print("Can't found valid SSH server on IP {}".format(ip_addr))
+        print("No se puede encontrar un servidor SSH válido en IP {}".format(ip_addr))
       return -1
     if passw:
       pswlist = [ passw ]
@@ -636,22 +636,22 @@ class Gateway():
       if psw is None:
         if not interactive:
           continue
-        psw = input('Enter password for "root" user: ')
+        psw = input('Introduzca la contraseña del usuario "root": ')
       for i, port in enumerate(plist):
         ret = self.check_ssh(ip_addr, port, psw, contimeout = contimeout)
         if ret >= 0:
           self.passw = psw
           self.ssh_port = port
           if verbose:
-            print("Detect valid SSH server on port {} (auth OK)".format(port))
+            print("Detectado servidor SSH válido en el puerto {} (auth OK)".format(port))
           return port
         if ret == -3 and passw and psw == passw:
           if verbose:
-            print("Set SSH password = None")
+            print("Establecer contraseña SSH = Ninguno")
           self.passw = None
           passw = None
     if verbose >= 2:
-      print("Can't found valid SSH server on IP {}".format(ip_addr))
+      print("No se puede encontrar un servidor SSH válido en IP {}".format(ip_addr))
     return -2
 
   def detect_ssh(self, verbose = 1, interactive = True, contimeout = 2, aux_port = 0):
@@ -725,7 +725,7 @@ class Gateway():
     except Exception as e:
       #print(e)
       if verbose:
-        die("SSH server not responding (IP: {})".format(self.ip_addr))
+        die("Servidor SSH no responde (IP: {})".format(self.ip_addr))
       self.shutdown()
     return None
 
@@ -736,7 +736,7 @@ class Gateway():
       return True
     except Exception as e:
       if verbose:
-        die("TELNET not responding (IP: {})".format(self.ip_addr))
+        die("TELNET no responde (IP: {})".format(self.ip_addr))
     return False
 
   def get_telnet(self, verbose = 0, password = None):
@@ -744,7 +744,7 @@ class Gateway():
       tn = telnetlib.Telnet(self.ip_addr, timeout=4)
     except Exception as e:
       if verbose:
-        die("TELNET not responding (IP: {})".format(self.ip_addr))
+        die("TELNET no responde (IP: {})".format(self.ip_addr))
       return None
     try:
       p_login = b'login: '
@@ -774,7 +774,7 @@ class Gateway():
     except Exception as e:
       #print(e)
       if verbose:
-        die("Can't login to TELNET (IP: {})".format(self.ip_addr))
+        die("No se puede iniciar sesión en TELNET (IP: {})".format(self.ip_addr))
     return None
 
   def get_ftp(self, verbose = 0):
@@ -792,7 +792,7 @@ class Gateway():
       return self.ftp
     except Exception:
       if verbose:
-        die("ftp not responding (IP: {})".format(self.ip_addr))
+        die("ftp no responde (IP: {})".format(self.ip_addr))
       self.shutdown()
     return None
 
@@ -923,8 +923,8 @@ class Gateway():
     num = str(random.randint(10000, 1000000))
     md5_local_fn = f"tmp/{fname}.{num}.md5"
     md5_remote_fn = f"/tmp/{fname}.{num}.md5"
-    cmd = f'md5sum "{fn_remote}" &> "{md5_remote_fn}" '       
-    rc = self.run_cmd(cmd, timeout = 4)
+    cmd = f'md5sum "{fn_remote}" > "{md5_remote_fn}" 2>&1'
+    rc = self.run_cmd(cmd, timeout = 5)
     if not rc:
         return -5
     os.remove(md5_local_fn) if os.path.exists(md5_local_fn) else None

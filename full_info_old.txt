@@ -1,0 +1,208 @@
+_MTD_partitions_:
+   0 > addr: 00000000  size: 00080000  ro: 0  name: "0:SBL1" 
+   1 > addr: 00080000  size: 00080000  ro: 0  name: "0:MIBIB" 
+   2 > addr: 00100000  size: 00040000  ro: 0  name: "0:BOOTCONFIG" 
+   3 > addr: 00140000  size: 00040000  ro: 0  name: "0:BOOTCONFIG1" 
+   4 > addr: 00180000  size: 00100000  ro: 0  name: "0:QSEE" 
+   5 > addr: 00280000  size: 00100000  ro: 0  name: "0:QSEE_1" 
+   6 > addr: 00380000  size: 00040000  ro: 0  name: "0:DEVCFG" 
+   7 > addr: 003C0000  size: 00040000  ro: 0  name: "0:DEVCFG_1" 
+   8 > addr: 00400000  size: 00040000  ro: 0  name: "0:CDT" 
+   9 > addr: 00440000  size: 00040000  ro: 0  name: "0:CDT_1" 
+  10 > addr: 00480000  size: 00080000  ro: 0  name: "0:APPSBLENV" 
+  11 > addr: 00500000  size: 00140000  ro: 0  name: "0:APPSBL_1" 
+  12 > addr: 00640000  size: 00140000  ro: 0  name: "0:APPSBL" 
+  13 > addr: 00780000  size: 00100000  ro: 0  name: "0:ART" 
+  14 > addr: 00880000  size: 00080000  ro: 0  name: "0:TRAINING" 
+  15 > addr: 00900000  size: 00080000  ro: 0  name: "bdata" 
+  16 > addr: 00980000  size: 00080000  ro: 0  name: "crash" 
+  17 > addr: 00A00000  size: 00080000  ro: 0  name: "crash_syslog" 
+  18 > addr: 00A80000  size: 02400000  ro: 0  name: "rootfs" 
+  19 > addr: 02E80000  size: 02400000  ro: 0  name: "rootfs_1" 
+  20 > addr: 05280000  size: 01F00000  ro: 0  name: "overlay" 
+  21 > addr: 07180000  size: 00080000  ro: 0  name: "rsvd0" 
+  22 > addr: FFFFFFFF  size: 00364000  ro: 0  name: "kernel" 
+  23 > addr: FFFFFFFF  size: 01458000  ro: 0  name: "ubi_rootfs" 
+  24 > addr: FFFFFFFF  size: 01B20000  ro: 0  name: "data" 
+
+_Base_info_:
+  Linux version: None
+  CPU arch: armv7
+  CPU name: ipq50xx
+  SPI rom: False
+
+_Kernel_command_line_:
+  ubi.mtd=rootfs_1
+  root=mtd:ubi_rootfs
+  rootfstype=squashfs
+  cnss2.bdf_integrated=0x24
+  cnss2.bdf_pci0=0x60
+  cnss2.bdf_pci1=0x60
+  cnss2.skip_radio_bmap=4
+  rootwait
+  uart_en=1
+  swiotlb=1
+
+_NVRam_params_:
+  CountryCode=ES
+  EncryptMode=0
+  SN=33592/F1VR92259
+  boot_wait=on
+  bootcmd=bootmiwifi
+  bootdelay=3
+  cap_ipaddr=192.168.1.1
+  color=100
+  eth1addr=5c:2:14:b7:4d:2a
+  ethaddr=5c:2:14:40:2c:a2
+  ethprime=eth1
+  fdt_high=0x4A400000
+  fdtcontroladdr=4a9d4004
+  flag_boot_rootfs=1
+  flag_boot_success=1
+  flag_boot_type=2
+  flag_last_success=1
+  flag_ota_reboot=0
+  flag_show_upgrade_info=0
+  flag_try_sys1_failed=0
+  flag_try_sys2_failed=0
+  flash_type=11
+  ipaddr=192.168.31.1
+  machid=8040000
+  miot_did=503060452
+  miot_key=iHXEMKvUN8GBs0dv
+  mode=AP
+  model=RA82
+  no_wifi_dev_times=0
+  nv_channel_secret=jQ8XGAPAckEuvmBKDwoNcw+ElwnAXj0oj+QTauCHYQg=
+  nv_device_id=fd13d719-7801-8626-df08-262506195016
+  peer1_lan=5c:02:14:b7:4d:2d
+  peer1_wan=5c:02:14:40:2c:a3
+  peer1_wl0=5c:02:14:b7:4d:2e
+  peer1_wl1=5c:02:14:b7:4d:2f
+  restore_defaults=0
+  sec_cfg_nonce=e7397dec-d3e7-4018-bf0f-7fa29c540af7
+  serverip=192.168.31.100
+  soc_hw_version=20180101
+  soc_version_major=1
+  soc_version_minor=1
+  ssh_en=1
+  stderr=serial@78AF000
+  stdin=serial@78AF000
+  stdout=serial@78AF000
+  telnet_en=1
+  uart_en=1
+  wl0_radio=1
+  wl0_ssid=xiaomi-router-ra82_miap2ca2_5G
+  wl1_radio=1
+  wl1_ssid=xiaomi-router-ra82_miap2ca2
+
+_RootFS_current_:
+  num = 1
+  mtd_num = None
+  mtd_dev = "None"
+  partition = "rootfs_1"
+
+_Version_info_:
+  UBoot: None 
+  OpenWrt: unknown 
+  Firmware: 1.4.31 
+  Channel: release 
+  BuildTime: Thu, 07 Sep 2023 04:09:20 +0000 
+  Hardware: RA82 
+  UBoot(2): 1.0.2 
+
+_Bootloader_info_:
+  0:SBL1:
+    addr: 0x00000000 
+    size: 0x00080000 
+    image size: 12 bytes 
+    type: None 
+  0:APPSBL:
+    addr: 0x00640000 
+    size: 0x00140000 
+    image size: 177 bytes 
+    type: None 
+
+_ENV_info_:
+  0:APPSBLENV:
+    addr: 0x00480000 
+    size: 0x00010000 
+    len: 1112 bytes 
+    prefix: b'\xaar\x7f^' 
+      CountryCode=ES
+      EncryptMode=0
+      SN=33592/F1VR92259
+      boot_wait=on
+      bootcmd=bootmiwifi
+      bootdelay=3
+      cap_ipaddr=192.168.1.1
+      color=100
+      eth1addr=5c:2:14:b7:4d:2a
+      ethaddr=5c:2:14:40:2c:a2
+      ethprime=eth1
+      fdt_high=0x4A400000
+      fdtcontroladdr=4a9d4004
+      flag_boot_rootfs=1
+      flag_boot_success=1
+      flag_boot_type=2
+      flag_last_success=1
+      flag_ota_reboot=0
+      flag_show_upgrade_info=0
+      flag_try_sys1_failed=0
+      flag_try_sys2_failed=0
+      flash_type=11
+      ipaddr=192.168.31.1
+      machid=8040000
+      miot_did=503060452
+      miot_key=iHXEMKvUN8GBs0dv
+      mode=AP
+      model=RA82
+      no_wifi_dev_times=0
+      nv_channel_secret=jQ8XGAPAckEuvmBKDwoNcw+ElwnAXj0oj+QTauCHYQg=
+      nv_device_id=fd13d719-7801-8626-df08-262506195016
+      peer1_lan=5c:02:14:b7:4d:2d
+      peer1_wan=5c:02:14:40:2c:a3
+      peer1_wl0=5c:02:14:b7:4d:2e
+      peer1_wl1=5c:02:14:b7:4d:2f
+      restore_defaults=0
+      sec_cfg_nonce=e7397dec-d3e7-4018-bf0f-7fa29c540af7
+      serverip=192.168.31.100
+      soc_hw_version=20180101
+      soc_version_major=1
+      soc_version_minor=1
+      ssh_en=1
+      stderr=serial@78AF000
+      stdin=serial@78AF000
+      stdout=serial@78AF000
+      telnet_en=1
+      uart_en=1
+      wl0_radio=1
+      wl0_ssid=xiaomi-router-ra82_miap2ca2_5G
+      wl1_radio=1
+      wl1_ssid=xiaomi-router-ra82_miap2ca2
+  bdata:
+    addr: 0x00900000 
+    size: 0x00010000 
+    len: 320 bytes 
+    prefix: b'qF\xce\xa1' 
+      color=100
+      CountryCode=EU
+      SN=33592/F1VR92259
+      model=RA82
+      telnet_en=1
+      ssh_en=1
+      uart_en=1
+      wl1_ssid=xiaomi-router-ra82_miap2ca2
+      wl0_ssid=xiaomi-router-ra82_miap2ca2_5G
+      miot_did=503060452
+      miot_key=iHXEMKvUN8GBs0dv
+      peer1_lan=5c:02:14:b7:4d:2d
+      peer1_wan=5c:02:14:40:2c:a3
+      peer1_wl0=5c:02:14:b7:4d:2e
+      peer1_wl1=5c:02:14:b7:4d:2f
+  0:SBL1:
+    addr: 0x00060000 
+    size: 0x00020000 
+    len: 0 bytes 
+    prefix: b'\xff\xff\xff\xff' 
+
