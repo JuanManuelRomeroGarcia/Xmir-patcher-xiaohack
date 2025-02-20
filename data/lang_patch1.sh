@@ -6,7 +6,9 @@ sed -i ':a;N;$!ba;s/>Wi-Fi密码： \n                                </><%:Wi-F
 sed -i 's/>连接设备数量 --</><%:连接设备数量 --%></g' /usr/lib/lua/luci/view/web/index.htm
 sed -i 's/>设置</><%:设置%></g' /usr/lib/lua/luci/view/web/index.htm
 sed -i ':a;N;$!ba;s/>Wi-Fi密码：\n                                </><%:Wi-Fi密码：%>\n                                </g' /usr/lib/lua/luci/view/web/index.htm
+sed -i 's/>已纳入家人上网保护</><%:已纳入家人上网保护%></g' /usr/lib/lua/luci/view/web/index.htm
 sed -i 's/>断开</><%:断开%></g' /usr/lib/lua/luci/view/web/index.htm
+sed -i 's/'\''Mesh 组网设备'\''/'\''<%:Mesh 组网设备%>'\''/g' /usr/lib/lua/luci/view/web/index.htm
 sed -i 's/'\''Mesh组网设备'\''/'\''<%:Mesh组网设备%>'\''/g' /usr/lib/lua/luci/view/web/index.htm
 sed -i 's/'\''Wi-Fi名称：'\''/'\''<%:Wi-Fi名称：%>'\''/g' /usr/lib/lua/luci/view/web/index.htm
 sed -i 's/'\''Wi-Fi密码: 未设置'\''/'\''<%:Wi-Fi密码: 未设置%>'\''/g' /usr/lib/lua/luci/view/web/index.htm
@@ -19,6 +21,7 @@ sed -i 's/>Wi-Fi名称</><%:Wi-Fi名称%></g' /usr/lib/lua/luci/view/web/apindex
 sed -i ':a;N;$!ba;s/>Wi-Fi密码：\n                                </><%:Wi-Fi密码：%>\n                                </g' /usr/lib/lua/luci/view/web/apindex.htm
 sed -i 's/>连接设备数量 --</><%:连接设备数量 --%></g' /usr/lib/lua/luci/view/web/apindex.htm
 sed -i 's/>设置</><%:设置%></g' /usr/lib/lua/luci/view/web/apindex.htm
+sed -i 's/>已纳入家人上网保护</><%:已纳入家人上网保护%></g' /usr/lib/lua/luci/view/web/apindex.htm
 sed -i 's/'\''Mesh组网设备'\''/'\''<%:Mesh组网设备%>'\''/g' /usr/lib/lua/luci/view/web/apindex.htm
 sed -i 's/'\''Wi-Fi名称：'\''/'\''<%:Wi-Fi名称：%>'\''/g' /usr/lib/lua/luci/view/web/apindex.htm
 sed -i 's/'\''Wi-Fi密码: 未设置'\''/'\''<%:Wi-Fi密码: 未设置%>'\''/g' /usr/lib/lua/luci/view/web/apindex.htm
@@ -37,8 +40,7 @@ sed -i 's/'\''搜索并添加Mesh节点'\''/'\''<%:搜索并添加Mesh节点%>'\
 sed -i 's/'\''没有搜索到可用的mesh节点'\''/'\''<%:没有搜索到可用的mesh节点%>'\''/g' /usr/lib/lua/luci/view/web/inc/g.js.htm
 sed -i 's/"Redmi路由器"/"<%:Redmi路由器%>"/g' /usr/lib/lua/luci/view/web/inc/g.js.htm
 sed -i 's/"小米路由器"/"<%:小米路由器%>"/g' /usr/lib/lua/luci/view/web/inc/g.js.htm
-sed -i 's/"家"/"<%:家%>"/g' /usr/lib/lua/luci/view/web/inc/g.js.htm
-sed -i 's/"客厅"/"<%:客厅%>"/g' /usr/lib/lua/luci/view/web/inc/g.js.htm
+sed -i 's/"超时"/"<%:超时%>"/g' /usr/lib/lua/luci/view/web/inc/g.js.htm
 # ======= FILE: /usr/lib/lua/luci/view/web/inc/header.htm ======= 
 sed -i 's/>开始搜索</><%:开始搜索%></g' /usr/lib/lua/luci/view/web/inc/header.htm
 sed -i ':a;N;$!ba;s/>\n             为保证Mesh网络良好的使用体验，当前至多可支持10台Mesh路由器组网，更多Mesh路由器建议组成新的Mesh网络。\n              </>\n             <%:为保证Mesh网络良好的使用体验，当前至多可支持10台Mesh路由器组网，更多Mesh路由器建议组成新的Mesh网络。%>\n              </g' /usr/lib/lua/luci/view/web/inc/header.htm
@@ -91,16 +93,6 @@ sed -i 's/>当前Wi-Fi的加密方式为超强加密（WPA3），在该模式下
 sed -i 's/>1\. NFC功能开启</><%:1\. NFC功能开启%></g' /usr/lib/lua/luci/view/web/inc/sysinfo.htm
 sed -i 's/>2\. 屏幕处于亮屏解锁的状态</><%:2\. 屏幕处于亮屏解锁的状态%></g' /usr/lib/lua/luci/view/web/inc/sysinfo.htm
 # ======= FILE: /usr/lib/lua/luci/view/web/inc/wanCheck.js.htm ======= 
-sed -i 's/"接入到运营商宽带的网线可以插在任意网口"/"<%:接入到运营商宽带的网线可以插在任意网口%>"/g' /usr/lib/lua/luci/view/web/inc/wanCheck.js.htm
 sed -i 's/"聚合口"/"<%:聚合口%>"/g' /usr/lib/lua/luci/view/web/inc/wanCheck.js.htm
-sed -i 's/"智能选择WAN口（推荐）"/"<%:智能选择WAN口（推荐）%>"/g' /usr/lib/lua/luci/view/web/inc/wanCheck.js.htm
-sed -i 's/"固定WAN口"/"<%:固定WAN口%>"/g' /usr/lib/lua/luci/view/web/inc/wanCheck.js.htm
 sed -i 's/"确认是否关闭LAN口聚合功能"/"<%:确认是否关闭LAN口聚合功能%>"/g' /usr/lib/lua/luci/view/web/inc/wanCheck.js.htm
-sed -i 's/"未检测到宽带网线接入，请将网线连接到任意网口"/"<%:未检测到宽带网线接入，请将网线连接到任意网口%>"/g' /usr/lib/lua/luci/view/web/inc/wanCheck.js.htm
-sed -i 's/"智能识别网口“"/"<%:智能识别网口“%>"/g' /usr/lib/lua/luci/view/web/inc/wanCheck.js.htm
-sed -i 's/"”作为WAN口"/"<%:”作为WAN口%>"/g' /usr/lib/lua/luci/view/web/inc/wanCheck.js.htm
-sed -i 's/"请选择WAN口"/"<%:请选择WAN口%>"/g' /usr/lib/lua/luci/view/web/inc/wanCheck.js.htm
 # ======= FILE: /usr/lib/lua/luci/view/web/setting/iptv.htm ======= 
-sed -i 's/>请选择网口</><%:请选择网口%></g' /usr/lib/lua/luci/view/web/setting/iptv.htm
-sed -i 's/"确认是否关闭IPTV功能"/"<%:确认是否关闭IPTV功能%>"/g' /usr/lib/lua/luci/view/web/setting/iptv.htm
-sed -i 's/"请选择一个网口作为IPTV口"/"<%:请选择一个网口作为IPTV口%>"/g' /usr/lib/lua/luci/view/web/setting/iptv.htm

@@ -1,0 +1,76 @@
+Metadata-Version: 2.1
+Name: pyasyncore
+Version: 1.0.4
+Summary: Make asyncore available for Python 3.12 onwards
+Home-page: https://github.com/simonrob/pyasyncore
+Author: Simon Robinson
+Author-email: simon@robinson.ac
+License: Python Software Foundation License Version 2
+Platform: any
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: License :: OSI Approved :: Python Software Foundation License
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+[![No Maintenance Intended](http://unmaintained.tech/badge.svg)](http://unmaintained.tech/)
+
+# Purpose
+This package contains the [asyncore](https://docs.python.org/3.11/library/asyncore.html) module as found in Python versions prior to 3.12.
+It is provided so that existing code relying on `import asyncore` is able to continue being used without significant refactoring.
+
+The module's source code is taken directly from the [Python standard library](https://github.com/python/cpython/blob/c4d45ee670c09d4f6da709df072ec80cb7dfad22/Lib/asyncore.py)<sup id="a1">[[1]](#f1)</sup>.
+The [specific version of asyncore that is provided](https://github.com/simonrob/pyasyncore/blob/master/asyncore/__init__.py) is the last update before the addition of deprecation/removal warnings at import time, and is essentially equivalent to [the version bundled with Python 3.9](https://github.com/python/cpython/blob/3.9/Lib/asyncore.py) (which was the last time the module was meaningfully updated).
+
+Please note that new projects should prefer [asyncio](https://docs.python.org/3/library/asyncio.html).
+
+
+## Installation
+This version of `asyncore` is intended for Python 3.12 or later. Install the module using `pip`:
+```shell
+python -m pip install pyasyncore
+```
+
+The module can be installed for earlier Python versions, but it will have no effect, and the standard library version of `asyncore` will be used in its place.
+
+Note that installing `pyasyncore` will not remove deprecation warnings in Python versions 3.10 and 3.11.
+Instead, use the `warnings` package:
+```python
+import warnings
+with warnings.catch_warnings():
+    warnings.simplefilter('ignore', DeprecationWarning)
+    import asyncore
+```
+
+
+## Usage
+The module is imported in exactly the same way as the standard library component it replaces:
+```python
+import asyncore
+```
+
+Note that the [PyPI module](https://pypi.org/project/pyasyncore/) is named `pyasyncore` because creating modules with the same name as those provided by the standard library is not permitted.
+
+For guidance about using the `asyncore` module, see the [official documentation](https://docs.python.org/3.11/library/asyncore.html).
+
+
+## Testing
+The [previous standard library tests](https://github.com/python/cpython/blob/3.11/Lib/test/test_asyncore.py) have also been replicated into this module.
+Run them using:
+```shell
+python -m unittest
+```
+
+
+## Maintenance
+Due to the fact that this previously built-in module is [no-longer supported](https://peps.python.org/pep-0594/) by the Python core development team, no further maintenance of the [asyncore code](https://github.com/simonrob/pyasyncore/blob/master/asyncore/__init__.py) is intended.
+This project is only intended to be updated to make changes or improvements to the module packaging.
+
+
+## License
+[Python Software Foundation License Version 2](LICENSE)
+
+
+### Footnotes
+<sub id="f1">1. Verify this if needed via: `diff <(curl --location https://github.com/python/cpython/raw/c4d45ee670c09d4f6da709df072ec80cb7dfad22/Lib/asyncore.py) <(curl --location https://github.com/simonrob/pyasyncore/raw/master/asyncore/__init__.py)` [⏎](#a1)</sub>

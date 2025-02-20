@@ -49,18 +49,13 @@ def die(*args):
   print(" ")
   sys.exit(err)
 
-def get_http_headers():
-  headers = {}
-  headers["Content-Type"] = "application/x-www-form-urlencoded; charset=UTF-8"
-  headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:65.0) Gecko/20100101 Firefox/65.0"
-  return headers
-
 
 class Gateway():
   def __init_fields(self):
     self.use_ssh = True
     self.use_ftp = False
     self.verbose = 2
+    self.con_timeout = 2
     self.timeout = 4
     self.memcfg = None  # shared memory "XMiR_12345"
     self.model_id = -2
@@ -77,8 +72,11 @@ class Gateway():
     self.socket = None  # TCP socket for SSH 
     self.ssh = None     # SSH session
     self.login = 'root' # default username
+    self.user_agent = "curl/8.4.0"
+    self.last_resp_text = None
   
   def __init__(self, timeout = 4, verbose = 2, detect_device = True, detect_ssh = True, load_cfg = True):
+    random.seed()
     self.__init_fields()
     self.verbose = verbose
     self.timeout = timeout
@@ -102,6 +100,50 @@ class Gateway():
       if port <= 0:
         die("Can't found valid SSH server on IP {}".format(self.ip_addr))
 
+  def api_request(self, path, params = None, resp = 'json', post = '', timeout = 4, stream = False):
+      self.last_resp_code = 0
+      self.last_resp_text = None
+      headers = { }
+      if post == 'raw' or post == 'bin':
+          headers["Content-Type"] = "application/octet-stream"
+      elif post == 'json':
+          headers["Content-Type"] = "application/json"
+      elif post:
+          headers["Content-Type"] = "application/x-www-form-urlencoded; charset=UTF-8"
+      headers["User-Agent"] = self.user_agent
+      url = f"http://{self.ip_addr}/cgi-bin/luci/"
+      if path.startswith('API/'):
+          url += f';stok={self.stok}/api' + path[3:]
+      else:
+          url += path
+      t_timeout = (self.con_timeout, timeout)
+      if post:
+          response = requests.post(url,  data = params, stream = stream, headers = headers, timeout = t_timeout)
+      else:
+          response = requests.get(url, params = params, stream = stream, headers = headers, timeout = t_timeout)
+      self.last_resp_code = response.status_code
+      if resp and not stream:
+          try:
+              self.last_resp_text = response.text
+          except Exception:
+              pass
+          if resp == 'text':
+              return response.text
+          if resp == 'TEXT':
+              response.raise_for_status()
+              return response.text
+          if resp.lower() == 'json':
+              if response.status_code == 500:  # Internal Server Error
+                  return None
+              response.raise_for_status()
+              try:
+                  dres = json.loads(response.text)
+              except Exception:
+                  raise RuntimeError(f'Received inccorrect JSON from "{path}" => {response.text}')
+              return dres
+      return response
+      #return response.status_code, response.content
+
   def detect_device(self):
     self.model_id = -2
     self.device_name = None
@@ -113,25 +155,24 @@ class Gateway():
     self.nonce_key = None
     self.status = -2
     try:
-      r0 = requests.get("http://{ip_addr}/cgi-bin/luci/web".format(ip_addr = self.ip_addr), timeout = self.timeout)
-      r0.raise_for_status()
+      page = self.api_request('web', resp = 'TEXT', timeout = self.timeout)
       #with open("r0.txt", "wb") as file:
-      #  file.write(r0.text.encode("utf-8"))
-      hardware = re.findall(r'hardware = \'(.*?)\'', r0.text)
+      #  file.write(page.encode("utf-8"))
+      hardware = re.findall(r'hardware = \'(.*?)\'', page)
       if hardware and len(hardware) > 0:
         self.device_name = hardware[0]
       else:
-        hardware = re.findall(r'hardwareVersion: \'(.*?)\'', r0.text)
+        hardware = re.findall(r'hardwareVersion: \'(.*?)\'', page)
         if hardware and len(hardware) > 0:
           self.device_name = hardware[0]
       self.device_name = self.device_name.upper()
-      romver = re.search(r'romVersion: \'(.*?)\'', r0.text)
+      romver = re.search(r'romVersion: \'(.*?)\'', page)
       self.rom_version = romver.group(1).strip() if romver else None
-      romchan = re.search(r'romChannel: \'(.*?)\'', r0.text)
+      romchan = re.search(r'romChannel: \'(.*?)\'', page)
       self.rom_channel = romchan.group(1).strip().lower() if romchan else None
-      mac_address = re.search(r'var deviceId = \'(.*?)\'', r0.text)
+      mac_address = re.search(r'var deviceId = \'(.*?)\'', page)
       self.mac_address = mac_address.group(1) if mac_address else None
-      nonce_key = re.search(r'key: \'(.*)\',', r0.text)
+      nonce_key = re.search(r'key: \'(.*)\',', page)
       self.nonce_key = nonce_key.group(1) if nonce_key else None
     except requests.exceptions.HTTPError as e:
       print("Http Error:", e)
@@ -150,7 +191,7 @@ class Gateway():
       die("You need to make the initial configuration in the WEB of the device!")
     self.model_id = self.get_modelid_by_name(self.device_name)
     self.status = -1
-    x = r0.text.find('a href="/cgi-bin/luci/web/init/hello')
+    x = page.find('a href="/cgi-bin/luci/web/init/hello')
     if (x > 10):
       die("You need to make the initial configuration in the WEB of the device!")
     self.status = 1
@@ -172,15 +213,14 @@ class Gateway():
     self.xqpassword = self.get_xqpassword()
     return self.status
 
-  def web_ping(self, timeout, wait_timeout = 0):
+  def web_ping(self, con_timeout, wait_timeout = 0):
     ret = True
     start_time = datetime.datetime.now()
     try:
-      res = requests.get("http://{ip_addr}/cgi-bin/luci/web".format(ip_addr = self.ip_addr), timeout = timeout)
-      res.raise_for_status()
-      mac_address = re.search(r'var deviceId = \'(.*?)\'', res.text)
+      page = self.api_request('web', resp = 'TEXT', timeout = (con_timeout, 4))
+      mac_address = re.search(r'var deviceId = \'(.*?)\'', page)
       self.mac_address = mac_address.group(1) if mac_address else None
-      nonce_key = re.search(r'key: \'(.*)\',', res.text)
+      nonce_key = re.search(r'key: \'(.*)\',', page)
       self.nonce_key = nonce_key.group(1) if nonce_key else None
     except Exception:      
       ret = False
@@ -209,29 +249,28 @@ class Gateway():
     else:
       return hashlib.sha256(string).hexdigest()
 
-  def web_login(self):
+  def web_login(self, timeout = 4):
     self.stok = None
     if not self.nonce_key or not self.mac_address:
-      die("Xiaomi Mi Wi-Fi device is wrong model or not the stock firmware in it.")
+      die("El dispositivo Xiaomi Mi Wi-Fi es un modelo incorrecto o no el firmware de stock en él.")
     dtype = 0 # 0: Web, 1: Android, 2: iOS, 3: Mac, 4: PC 
     device = self.mac_address
     nonce = "{}_{}_{}_{}".format(dtype, device, int(time.time()), random.randint(1000, 10000))
     web_pass = self.webpassword
     if not web_pass:
-      web_pass = input("Enter device WEB password: ")
+      web_pass = input("Introduzca la contraseña de la interfaz WEB: ")
     account_str = (web_pass + self.nonce_key).encode('utf-8')
     account_str = self.xqhash(account_str)
     password = (nonce + account_str).encode('utf-8')
     password = self.xqhash(password)
     username = 'admin'
-    data = "username={username}&password={password}&logtype=2&nonce={nonce}".format(username = username, password = password, nonce = nonce)
-    requrl = "http://{ip_addr}/cgi-bin/luci/api/xqsystem/login".format(ip_addr = self.ip_addr)
-    res = requests.post(requrl, data = data, headers = get_http_headers())
+    data = f"username={username}&password={password}&logtype=2&nonce={nonce}"
+    text = self.api_request('api/xqsystem/login', data, post = 'x-www-form', resp = 'text', timeout = timeout)
     try:
-      stok = re.findall(r'"token":"(.*?)"', res.text)[0]
+      stok = re.findall(r'"token":"(.*?)"', text)[0]
     except Exception:
       self.webpassword = ""
-      die("WEB password is not correct! (encryptmode = {})".format(self.encryptmode))
+      die("¡La contraseña WEB no es correcta!  (encryptmode = {})".format(self.encryptmode))
     self.webpassword = web_pass
     self.stok = stok
     return stok
@@ -241,16 +280,13 @@ class Gateway():
     return "http://{ip_addr}/cgi-bin/luci/;stok={stok}/api/".format(ip_addr = self.ip_addr, stok = self.stok)
 
   def get_pub_info(self, api_name, timeout = 5):
-    subsys = 'xqsystem'
-    if api_name == 'router_info' or api_name == 'topo_graph':
-      subsys = 'misystem'
-    try:
-      url = "http://{ip_addr}/cgi-bin/luci/api/{subsys}/{api_name}".format(ip_addr = self.ip_addr, subsys = subsys, api_name = api_name)
-      res = requests.get(url, timeout = timeout)
-      res.raise_for_status()
-    except Exception:      
-      return {}
-    return json.loads(res.text)
+        if '/' in api_name:
+          path = api_name
+        elif api_name in [ 'router_info', 'topo_graph' ]:
+            path = f'api/misystem/{api_name}'
+        else:
+            path = f'api/xqsystem/{api_name}'
+        return self.api_request(path, timeout = timeout)
 
   def get_init_info(self, timeout = 5):
     return self.get_pub_info('init_info', timeout = timeout)
@@ -277,21 +313,16 @@ class Gateway():
   def get_device_systime(self, fix_tz = True):
     # http://192.168.31.1/cgi-bin/luci/;stok=14b996378966455753104d187c1150b4/api/misystem/sys_time
     # response: {"time":{"min":32,"day":4,"index":0,"month":10,"year":2023,"sec":7,"hour":6,"timezone":"XXX"},"code":0}
-    res = requests.get(self.apiurl + 'misystem/sys_time')
-    try:
-        dres = json.loads(res.text)
-        code = dres['code']
-    except Exception:
-        raise RuntimeError(f'Error on parse response for command "sys_time" => {res.text}')
-    if code != 0:
-        raise RuntimeError(f'Error on get sys_time => {res.text}')
-    dst = dres['time']
-    if fix_tz and 'timezone' in dst:
-        if "'" in dst['timezone'] or ";" in dst['timezone']:
-            dst['timezone'] = "GMT0"
-    return dst
+        dres = self.api_request('API/misystem/sys_time')
+        if not dres or dres['code'] != 0:
+            raise RuntimeError(f'Error on get sys_time => {dres}')
+        dst = dres['time']
+        if fix_tz and 'timezone' in dst:
+          if "'" in dst['timezone'] or ";" in dst['timezone']:
+              dst['timezone'] = "GMT0"
+        return dst
 
-  def set_device_systime(self, dst, year = 0, month = 0, day = 0, hour = 0, min = 0, sec = 0, timezone = ""):
+  def set_device_systime(self, dst, year = 0, month = 0, day = 0, hour = 0, min = 0, sec = 0, timezone = "", wait = True):
     if dst:
         year     = dst['year']
         month    = dst['month']
@@ -301,16 +332,38 @@ class Gateway():
         sec      = dst['sec']
         timezone = dst['timezone']
     params = { 'time': f"{year}-{month}-{day} {hour}:{min}:{sec}", 'timezone': timezone }
-    res = requests.get(self.apiurl + 'misystem/set_sys_time', params = params)
-    try:
-        dres = json.loads(res.text)
-        code = dres['code']
-    except Exception:
-        raise RuntimeError(f'Error on parse response for command "set_sys_time" => {res.text}')
-    if code != 0:
-        raise RuntimeError(f'Error on exec command "set_sys_time" => {res.text}')
-    return res.text
+    dres = self.api_request('API/misystem/set_sys_time', params)
+    if not dres or dres['code'] != 0:
+        raise RuntimeError(f'Error on exec command "set_sys_time" => {dres}')
+    if wait:
+        time.sleep(3.1) # because internal code exec: "echo 'ok,xiaoqiang' > /tmp/ntp.status; sleep 3; date -s \""..time.."\""
+    return True
 
+  def get_diag_paras(self):
+    # http://192.168.31.1/cgi-bin/luci/;stok=14b996378966455753104d187c1150b4/api/xqnetwork/diag_get_paras
+    # response: {"code":0,"signal_thr":"-60","usb_read_thr":0,"disk_write_thr":0,"disk_read_thr":0,"iperf_test_thr":"25","usb_write_thr":0}
+    dres = self.api_request('API/xqnetwork/diag_get_paras')
+    if not dres or dres['code'] != 0:
+        raise RuntimeError(f'Error on get diag_get_paras => {dres}')
+    return dres
+
+  def get_diag_iperf_test_thr(self):
+    resp = self.get_diag_paras()
+    return str(resp['iperf_test_thr'])
+
+  def set_diag_iperf_test_thr(self, iperf_test_thr):
+    params = {
+                'iperf_test_thr': str(iperf_test_thr),
+                'usb_read_thr': 0,
+                'usb_write_thr': 0,
+                'disk_read_thr': 0,
+                'disk_write_thr': 0,
+             }
+    dres = self.api_request('API/xqnetwork/diag_set_paras', params)
+    if not dres or dres['code'] != 0:
+        raise RuntimeError(f'Error on exec command "diag_set_paras" => {dres}')
+    return True
+  
   def wait_shutdown(self, timeout, verbose = 1):
     if verbose:
       print('Waiting for shutdown: ', end='', flush=True)
@@ -352,10 +405,10 @@ class Gateway():
     return False    
 
   def reboot_device(self, wait_timeout = None):
+    api = 'API/xqsystem/reboot'
     try:
-      params = { 'client': 'web' }
-      res = requests.post(self.apiurl + "xqsystem/reboot", params = params, timeout=self.timeout)
-      if res.text.find('"code":0') < 0:
+      text = self.api_request(api, { 'client': 'web' }, post = 'json', resp = 'text')
+      if '"code":0' not in text:
         return False
       if wait_timeout:
         if not self.wait_shutdown(wait_timeout):
@@ -380,6 +433,11 @@ class Gateway():
    #===============================================================================
   def free_memcfg(self):
     if self.memcfg:
+      if os.name != "nt":
+        try:
+          self.memcfg.unlink()
+        except Exception:
+          pass
       try:
         self.memcfg.close() # https://docs.python.org/3/library/multiprocessing.shared_memory.html
       except Exception:
@@ -462,7 +520,7 @@ class Gateway():
   #===============================================================================
   @property
   def ip_addr(self):
-    return self.get_config_param('device_ip_addr', '192.168.1.1').strip()
+    return self.get_config_param('device_ip_addr', '192.168.31.1').strip()
 
   @ip_addr.setter
   def ip_addr(self, value):
@@ -566,7 +624,7 @@ class Gateway():
         plist.append(port)
     if not plist:
       if verbose >= 2:
-        print("Can't found valid SSH server on IP {}".format(ip_addr))
+        print("No se puede encontrar un servidor SSH válido en IP {}".format(ip_addr))
       return -1
     if passw:
       pswlist = [ passw ]
@@ -578,22 +636,22 @@ class Gateway():
       if psw is None:
         if not interactive:
           continue
-        psw = input('Enter password for "root" user: ')
+        psw = input('Introduzca la contraseña del usuario "root": ')
       for i, port in enumerate(plist):
         ret = self.check_ssh(ip_addr, port, psw, contimeout = contimeout)
         if ret >= 0:
           self.passw = psw
           self.ssh_port = port
           if verbose:
-            print("Detect valid SSH server on port {} (auth OK)".format(port))
+            print("Detectado servidor SSH válido en el puerto {} (auth OK)".format(port))
           return port
         if ret == -3 and passw and psw == passw:
           if verbose:
-            print("Set SSH password = None")
+            print("Establecer contraseña SSH = Ninguno")
           self.passw = None
           passw = None
     if verbose >= 2:
-      print("Can't found valid SSH server on IP {}".format(ip_addr))
+      print("No se puede encontrar un servidor SSH válido en IP {}".format(ip_addr))
     return -2
 
   def detect_ssh(self, verbose = 1, interactive = True, contimeout = 2, aux_port = 0):
@@ -667,7 +725,7 @@ class Gateway():
     except Exception as e:
       #print(e)
       if verbose:
-        die("SSH server not responding (IP: {})".format(self.ip_addr))
+        die("Servidor SSH no responde (IP: {})".format(self.ip_addr))
       self.shutdown()
     return None
 
@@ -678,7 +736,7 @@ class Gateway():
       return True
     except Exception as e:
       if verbose:
-        die("TELNET not responding (IP: {})".format(self.ip_addr))
+        die("TELNET no responde (IP: {})".format(self.ip_addr))
     return False
 
   def get_telnet(self, verbose = 0, password = None):
@@ -686,7 +744,7 @@ class Gateway():
       tn = telnetlib.Telnet(self.ip_addr, timeout=4)
     except Exception as e:
       if verbose:
-        die("TELNET not responding (IP: {})".format(self.ip_addr))
+        die("TELNET no responde (IP: {})".format(self.ip_addr))
       return None
     try:
       p_login = b'login: '
@@ -716,7 +774,7 @@ class Gateway():
     except Exception as e:
       #print(e)
       if verbose:
-        die("Can't login to TELNET (IP: {})".format(self.ip_addr))
+        die("No se puede iniciar sesión en TELNET (IP: {})".format(self.ip_addr))
     return None
 
   def get_ftp(self, verbose = 0):
@@ -734,7 +792,7 @@ class Gateway():
       return self.ftp
     except Exception:
       if verbose:
-        die("ftp not responding (IP: {})".format(self.ip_addr))
+        die("ftp no responde (IP: {})".format(self.ip_addr))
       self.shutdown()
     return None
 
@@ -798,6 +856,7 @@ class Gateway():
         tn.read_until(tn.prompt, timeout = 4 if timeout is None else timeout)
     if not self.use_ssh:
       tn.write(b"exit\n")
+      ret = True
     return ret
 
   def download(self, fn_remote, fn_local, verbose = 1):
@@ -826,11 +885,12 @@ class Gateway():
       raise RuntimeError('FIXME')
     return True
 
-  def upload(self, fn_local, fn_remote, verbose = 1):
-    try:
-      file = open(fn_local, 'rb')
-    except Exception:
-      die('File "{}" not found.'.format(fn_local))
+  def upload(self, fn_local, fn_remote, md5chk = True, verbose = 1):
+    if not os.path.exists(fn_local):
+      die(f'File "{fn_local}" not found.')
+    if md5chk:
+      md5_local = self.get_md5_for_local_file(fn_local)
+    file = open(fn_local, 'rb')
     if verbose and self.verbose:
       print('Upload file: "{}" ....'.format(fn_local))
     if self.use_ssh:
@@ -848,7 +908,70 @@ class Gateway():
     else:
       raise RuntimeError('FIXME')
     file.close()
+    if md5chk:
+      md5_remote = self.get_md5_for_remote_file(fn_remote)
+      if md5_remote != md5_local:
+        if md5chk == 2:
+          die(f'File "{fn_local}" uploaded, but MD5 incorrect!')
+        #if verbose:
+        print(f'ERROR: File "{fn_local}" uploaded, but MD5 incorrect!')
+        return False
     return True
+  
+  def get_md5_for_remote_file(self, fn_remote):
+    fname = os.path.basename(fn_remote)
+    num = str(random.randint(10000, 1000000))
+    md5_local_fn = f"tmp/{fname}.{num}.md5"
+    md5_remote_fn = f"/tmp/{fname}.{num}.md5"
+    cmd = f'md5sum "{fn_remote}" > "{md5_remote_fn}" 2>&1'
+    rc = self.run_cmd(cmd, timeout = 5)
+    if not rc:
+        return -5
+    os.remove(md5_local_fn) if os.path.exists(md5_local_fn) else None
+    self.download(md5_remote_fn, md5_local_fn)
+    if not os.path.exists(md5_local_fn):
+        return -4
+    with open(md5_local_fn, 'r', encoding = 'latin1') as file:
+        md5 = file.read()
+    os.remove(md5_local_fn)
+    if not md5:
+        return -3
+    if md5.startswith('md5sum:'):
+        return -2
+    md5 = md5.split(' ')[0]
+    md5 = md5.strip()
+    if len(md5) != 32:
+        return -1
+    return md5.lower()
+  
+  def get_md5_for_local_file(self, fn_local, size = None):
+    hasher = hashlib.md5()
+    bs = 512*1024
+    if size is None:
+        with open(fn_local, 'rb') as file:
+            for chunk in iter(lambda: file.read(bs), b''):
+                hasher.update(chunk)
+    elif size > 0:
+        tail_size = 0
+        nsize = size
+        filesize = os.path.getsize(fn_local)
+        if size > filesize:
+            tail_size = size - filesize
+            nsize = filesize
+        readed = 0
+        with open(fn_local, 'rb') as file:
+            while True:
+                if readed + bs > nsize:
+                    bs = nsize - readed
+                chunk = file.read(bs)
+                hasher.update(chunk)
+                readed += bs
+                if readed >= nsize:
+                    break
+        if tail_size:
+            hasher.update(b'\0' * tail_size)
+    return hasher.hexdigest()
+
 
   def run_cmd_with_output(self, cmd, timeout=None):
         output = ""

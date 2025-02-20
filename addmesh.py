@@ -2,15 +2,19 @@
 # -*- coding: utf-8 -*-
 
 import hashlib
+import json
 import random
 import time
 import uuid
 import getpass
 import requests
 import sys
+import re
+import argparse
 
+# Configuración predeterminada
 PUBLIC_KEY = "a2ffa5c9be07488bbb04a3a47d3c5f6a"
-DEFAULT_HOSTNAME = "gateway"
+DEFAULT_HOSTNAME = "192.168.31.1"
 
 def sha1(x: str):
     return hashlib.sha1(x.encode()).hexdigest()
@@ -20,174 +24,210 @@ def get_mac_address():
     return ":".join(as_hex[i : i + 2] for i in range(0, 12, 2))
 
 def generate_nonce(miwifi_type=0):
-    return f"{miwifi_type}_{get_mac_address()}_{int(time.time())}_{int(random.random() * 1000)}"
+    return f"{miwifi_type}_{get_mac_address()}_{int(time.time())}_{random.randint(0, 999)}"
 
 def generate_password_hash(nonce, password):
     return sha1(nonce + sha1(password + PUBLIC_KEY))
 
 def prompt_input(prompt):
-    """Función para solicitar entrada con opción de salir."""
-    value = input(f"{prompt} \n (o escribe '0' para terminar): ")
-    if value == "0":
-        print("Saliendo del programa...")
-        sys.exit(0)
-    return value
+    """Solicita una entrada al usuario con la opción de salir al ingresar '0'."""
+    while True:
+        value = input(f"{prompt} \n(o escribe '0' para salir): ").strip()
+        if value == "0":
+            print("Saliendo del programa...")
+            sys.exit(0)
+        if value:
+            return value
+        print("⚠️ Entrada no válida, intenta de nuevo.")
 
 def display_ip(address):
-    """Función para mostrar la IP a la que se conecta."""
-    print(f"Conectando a la IP: {address}\n")
+    """Muestra la IP de conexión."""
+    print(f"🔗 Conectando a la IP: {address}\n")
+
+def validar_mac(mac):
+    """Verifica que la dirección MAC tenga el formato correcto."""
+    mac_regex = r"^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$"
+    return bool(re.match(mac_regex, mac))
 
 class MiWiFi():
     def __init__(self, address, miwifi_type=0):
-        # Añade el prefijo "http://" si no está presente
-        if not address.startswith("http://") and not address.startswith("https://"):
+        if not address.startswith(("http://", "https://")):
             address = f"http://{address}"
-        if address.endswith("/"):
-            address = address[:-1]
-        self.address = address
+        self.address = address.rstrip("/")
         self.token = None
         self.miwifi_type = miwifi_type
         self.aiot = None
 
-    def get_infos(self):
-        if not self.token:
-            print("¡Necesitas iniciar sesión para usar esta función!")
-            return None
-        response = requests.get(f"{self.address}/cgi-bin/luci/;stok={self.token}/api/misystem/status")
-        jdata = response.json()
-        if response.status_code == 200 and "hardware" in jdata:
-            print(f"Plataforma: {jdata['hardware']['platform']}")
-        else:
-            print("¡Hubo un problema al recuperar la información!")
-            exit(1)
-
-    def set_aiot_status(self, status):
-        if not self.token:
-            print("¡Necesitas iniciar sesión para usar esta función!")
-            return None
-        aiotstatus = "ENCENDIDO" if status else "APAGADO"
-        print(f"Cambiando el estado del escaneo AIoT a {aiotstatus}...")
-        response = requests.post(
-            f"{self.address}/cgi-bin/luci/;stok={self.token}/api/xqnetwork/miscan_switch",
-            data = {
-                "on": str(int(status))
-            },
-        )
-        jdata = response.json()
-        if response.status_code == 200:
-            self.get_aiot_status()
-        else:
-            print("¡Hubo un problema al recuperar la información de AIoT!")
-            exit(1)
-
-    def get_aiot_status(self):
-        if not self.token:
-            print("¡Necesitas iniciar sesión para usar esta función!")
-            return None
-        response = requests.get(f"{self.address}/cgi-bin/luci/;stok={self.token}/api/xqnetwork/get_miscan_switch")
-        jdata = response.json()
-        if response.status_code == 200 and "enabled" in jdata:
-            self.aiot = bool(jdata['enabled'])
-            aiotstatus = "ENCENDIDO" if self.aiot else "APAGADO"
-            print(f"Estado del escaneo AIoT: {aiotstatus}")
-            print("")
-            return self.aiot
-        else:
-            print("¡Hubo un problema al recuperar la información de AIoT!")
-            exit(1)
-
-    def get_5ghz_xiaomi(self):
-        if not self.token:
-            print("¡Necesitas iniciar sesión para usar esta función!")
-            return None
-        print("Pidiendo al router principal que escanee puntos de acceso WiFi de Xiaomi...")
-        response = requests.get(f"{self.address}/cgi-bin/luci/;stok={self.token}/api/xqnetwork/wifi_list")
-        jdata = response.json()
-        detected = 0
-        if response.status_code == 200 and "list" in jdata:
-            for ap in jdata["list"]:
-                if ap["ssid"].startswith("Xiaomi_") and ap["encryption"] == "NONE":
-                    if (ap["band"] == "5g" and ap["ssid"].endswith("_5G")) or (ap["band"] == "2g"):
-                        if detected == 0:
-                            print("Puntos de acceso detectados:")
-                        print(f'\tBanda: {ap["band"]}hz SSID: {ap["ssid"]} CH: {ap["channel"]} MODELO: {ap["wsc_modelname"]} MAC: {ap["bssid"]}')
-                        if ap["band"] == "2g":
-                            pmac = ap['bssid'].split(":")
-                            pmac[-1] = hex(int(pmac[-1], 16) + 1)[2:]
-                            pmac = ':'.join(pmac).upper()
-                            print(f'\t\tMAC POSIBLE para 5GHz: {pmac}')
-                        detected += 1
-        if detected == 0:
-            print("¡No se detectaron puntos de acceso!\n (¿Están los dispositivos lo suficientemente cerca?)")
-            print("Puedes continuar, pero probablemente fallará.")
-        print("")
+    def request(self, method, endpoint, data=None):
+        """Manejo centralizado de solicitudes HTTP con validación."""
+        url = f"{self.address}/cgi-bin/luci/;stok={self.token}{endpoint}" if self.token else f"{self.address}{endpoint}"
+        try:
+            response = requests.request(method, url, data=data, timeout=5)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"⚠️ Error en la conexión: {e}")
+            sys.exit(1)
 
     def login(self, password):
         nonce = generate_nonce(self.miwifi_type)
-
-        response = requests.post(
-            f"{self.address}/cgi-bin/luci/api/xqsystem/login",
-            data={
-                "username": "admin",
-                "logtype": "2",
-                "password": generate_password_hash(nonce, password),
-                "nonce": nonce,
-            },
-        )
-        jdata = response.json()
-        if response.status_code == 200 and "token" in jdata:
+        data = {
+            "username": "admin",
+            "logtype": "2",
+            "password": generate_password_hash(nonce, password),
+            "nonce": nonce,
+        }
+        jdata = self.request("POST", "/cgi-bin/luci/api/xqsystem/login", data)
+        if "token" in jdata:
             self.token = jdata["token"]
-            return jdata
-        return None
+            return True
+        print("❌ Error: No se pudo iniciar sesión. Verifica tu contraseña.")
+        return False
 
-    def add_mesh_node(self, macaddr, location="Estudio"):
+    def get_infos(self):
+        jdata = self.request("GET", "/api/misystem/status")
+        if "hardware" in jdata:
+            print(f"🖥️ Plataforma: {jdata['hardware']['platform']}")
+        else:
+            print("❌ Error al recuperar la información del sistema.")
+            sys.exit(1)
+
+    def set_aiot_status(self, status):
+        """Activa o desactiva el escaneo AIoT solo si es necesario."""
         if not self.token:
             print("¡Necesitas iniciar sesión para usar esta función!")
             return None
-        response = requests.post(
-            f"{self.address}/cgi-bin/luci/;stok={self.token}/api/xqnetwork/add_mesh_node",
-            data={
-                "mac": macaddr,
-                "locate": location
-            },
-        )
-        jdata = response.json()
-        if response.status_code == 200 and "code" in jdata and jdata['code'] == 0:
-            return jdata
-        return None
+
+        # Obtener el estado actual y manejar errores si no se obtiene correctamente
+        current_status = self.get_aiot_status()
+        if current_status is None:
+            print("⚠️ No se pudo obtener el estado actual de AIoT. No se realizará ningún cambio.")
+            return
+
+        # Si el estado ya es el deseado, no hacer nada
+        if current_status == status:
+            print(f"⚡ No es necesario cambiar el estado de AIoT, ya está {'ENCENDIDO' if status else 'APAGADO'}.")
+            return
+
+        # Si es diferente, cambiar el estado
+        aiotstatus = "ENCENDIDO" if status else "APAGADO"
+        print(f"🔄 Cambiando el estado del escaneo AIoT a {aiotstatus}...")
+
+        try:
+            response = requests.post(
+                f"{self.address}/cgi-bin/luci/;stok={self.token}/api/xqnetwork/miscan_switch",
+                data={"on": str(int(status))},
+                timeout=5
+            )
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            print(f"⚠️ Error al cambiar el estado de AIoT: {e}")
+            return
+
+        # Confirmamos que el cambio realmente se hizo
+        new_status = self.get_aiot_status()
+        if new_status == status:
+            print(f"✅ Estado del escaneo AIoT cambiado correctamente a {aiotstatus}.")
+        else:
+            print("❌ No se pudo confirmar el cambio de estado de AIoT.")
+
+    def get_aiot_status(self):
+        """Obtiene el estado actual del escaneo AIoT y maneja errores si ocurren."""
+        try:
+            jdata = self.request("GET", "/api/xqnetwork/get_miscan_switch")
+            if "enabled" in jdata:
+                self.aiot = bool(jdata["enabled"])
+                aiotstatus = "ENCENDIDO" if self.aiot else "APAGADO"
+                print(f"📡 Estado del escaneo AIoT: {aiotstatus}\n")
+                return self.aiot
+            else:
+                print("⚠️ La respuesta del router no contiene información de AIoT.")
+                return None
+        except requests.exceptions.RequestException as e:
+            print(f"⚠️ Error al obtener el estado de AIoT: {e}")
+            return None
+
+
+    def get_5ghz_xiaomi(self):
+        if not self.token:
+            print("❌ ¡Necesitas iniciar sesión para usar esta función!")
+            return None
+
+        print("🔍 Escaneando puntos de acceso WiFi de Xiaomi...")
+
+        try:
+            response = requests.get(
+                f"{self.address}/cgi-bin/luci/;stok={self.token}/api/xqnetwork/wifi_list", 
+                timeout=15
+            )
+            response.raise_for_status()
+            jdata = response.json()
+        except requests.exceptions.Timeout:
+            print("⚠️ El router tardó demasiado en responder.")
+            return None
+        except requests.exceptions.RequestException as e:
+            print(f"⚠️ Error en la conexión: {e}")
+            return None
+
+        detected = 0
+        for ap in jdata.get("list", []):
+            # Filtrar solo los AP Xiaomi sin cifrado y en las bandas relevantes
+            if (ap["ssid"].startswith("xiaomi-router-") or ap["ssid"].startswith("Xiaomi_")) and ap["encryption"] == "NONE":
+                if ap["band"] in ["5g", "game"]:
+                    print(f"📡 {ap['ssid']} ({ap['bssid']}) - Canal: {ap['channel']} - Banda: {ap['band']}")
+                    detected += 1
+                elif ap["band"] == "2g":
+                    # Calcular posible MAC para 5GHz si solo se detecta en 2.4GHz
+                    pmac = ap["bssid"].split(":")
+                    pmac[-1] = hex(int(pmac[-1], 16) + 1)[2:].zfill(2).upper()
+                    possible_5ghz_mac = ':'.join(pmac)
+                    print(f"⚠️ Solo se detectó en 2.4GHz ({ap['ssid']}). MAC posible para 5GHz: {possible_5ghz_mac}")
+
+        if detected == 0:
+            print("❌ No se detectaron puntos de acceso Xiaomi en 5GHz.")
+
+
+
+    def add_mesh_node(self, macaddr, location="Estudio"):
+        print(f"🔗 Agregando {macaddr} como nodo mesh en {location}...")
+        jdata = self.request("POST", "/api/xqnetwork/add_mesh_node", {"mac": macaddr, "locate": location})
+        if jdata.get("code") == 0:
+            print(f"✅ Nodo {macaddr} agregado correctamente. Espera a que se reinicie.")
+            return True
+        print(f"❌ Error al agregar el nodo. Código de error: {jdata.get('code', 'Desconocido')}")
+        return False
 
 if __name__ == "__main__":
-    print("Agregador de Nodo Mesh MiWiFi v1.2 por Xiaohack \n\n")
+    parser = argparse.ArgumentParser(description="Agregador de Nodo Mesh MiWiFi")
+    parser.add_argument("address", nargs="?", default=f"http://{DEFAULT_HOSTNAME}", help="Dirección IP o nombre del router")
+    args = parser.parse_args()
 
-    # Obtiene la IP desde los argumentos o usa 'gateway' por defecto
-    address_master = f"{sys.argv[1]}" if len(sys.argv) > 1 else f"http://{DEFAULT_HOSTNAME}"
-    
-    # Muestra la IP a la que se está conectando
+    address_master = args.address
     display_ip(address_master)
 
-    # Pide solo la contraseña, ya que la IP ya está definida
-    password_master = getpass.getpass(prompt='Contraseña del router principal \n(o escribe "0" para terminar): ')
+    password_master = getpass.getpass(prompt='🔑 Introduce la contraseña del router principal \n(o escribe "0" para salir): ')
     if password_master == "0":
         print("Saliendo del programa...")
         sys.exit(0)
 
     router = MiWiFi(address=address_master)
-    print("Iniciando sesión...")
+    print("🔐 Iniciando sesión...")
     if not router.login(password_master):
-        print("¡Fallo en la autenticación!")
-        exit(1)
-    print("Inicio de sesión: OK\n")
-    
+        sys.exit(1)
+    print("✅ Inicio de sesión exitoso.\n")
+
     router.get_infos()
     if not router.get_aiot_status():
         router.set_aiot_status(True)
     router.get_5ghz_xiaomi()
 
-    mac_address_client = prompt_input("Dirección MAC del cliente (5GHz, no configurado) (AA:BB:CC:DD:EE:FF)")
-    print(f"Agregando {mac_address_client} como nodo mesh...")
+    while True:
+        mac_address_client = prompt_input("📡 Introduce la dirección MAC del router (5GHz, no configurado) (AA:BB:CC:DD:EE:FF)")
+        if validar_mac(mac_address_client):
+            break
+        print("❌ Dirección MAC inválida, intenta nuevamente.")
+
     if router.add_mesh_node(mac_address_client):
-        print("Nodo configurado correctamente. Espera a que se reinicie.")
-        exit(0)
+        sys.exit(0)
     else:
-        print("¡Algo salió mal!")
-        exit(1)
+        sys.exit(1)

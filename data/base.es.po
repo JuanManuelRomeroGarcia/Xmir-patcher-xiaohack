@@ -25,6 +25,84 @@ msgstr ""
 msgid "Redmi路由器"
 msgstr "Router Redmi"
 
+msgid "子Mesh设置"
+msgstr "Configuración de Mesh"
+
+msgid "静默模式"
+msgstr "Modo silencioso"
+
+msgid "开启此功能，路由将关闭所有Wi-Fi功能。 *路由器重启后，该模式将自动关闭，Wi-Fi将自动打开。"
+msgstr "Cuando esta función está activada, el enrutador desactivará todas las funciones de Wi-Fi. *Después de que el enrutador se reinicie, este modo se apagará automáticamente y el Wi-Fi se encenderá automáticamente."
+
+msgid "IPv6网络设置"
+msgstr "Configuración de red IPv6"
+
+msgid "IPv6设置介绍"
+msgstr "Introducción a la configuración de IPv6"
+
+msgid "小米路由器支持IPv6网络，该路由器提供如下设置方式："
+msgstr "El enrutador Xiaomi admite la red IPv6 y el enrutador proporciona las siguientes configuraciones:"
+
+msgid "1. Auto模式：智能配置此路由器IPv6网络为Passthough/ Native / NAT 6 ，推荐选择此配置方式；"
+msgstr "1. Modo automático: configure de forma inteligente la red IPv6 de este enrutador en Passthrough/Native/NAT 6. Se recomienda elegir este método de configuración;"
+
+msgid "2. DHCPv6：此模式会根据NAT 6方式采用情况动态配置IPv6上网方式；"
+msgstr "2. DHCPv6: este modo configurará dinámicamente el método de acceso a Internet IPv6 de acuerdo con la adopción del método NAT 6;"
+
+msgid "3. PPPoEv6：此模式将默认复用IPv4拨号链路，也可以手动输入IPv6宽带账号密码手动配置；"
+msgstr "3. PPPoEv6: este modo reutilizará el enlace de acceso telefónico IPv4 de forma predeterminada. También puede ingresar manualmente la contraseña de la cuenta de banda ancha IPv6 para configurarla manualmente;"
+
+msgid "4. 静态IP模式：通过手动填写IPv6相关信息配置静态IPv6上网方式；"
+msgstr "4. Modo IP estático: configure el método de acceso a Internet IPv6 estático completando manualmente la información relacionada con IPv6;"
+
+msgid "5. Passthrogh：此模式透传IPv6数据，启用后相应数据将在路由器WAN侧和LAN侧之间点对点传输。"
+msgstr "5. Passthrogh: este modo transmite de forma transparente datos IPv6. Cuando está habilitado, los datos correspondientes se transmitirán punto a punto entre el lado WAN y el lado LAN del enrutador."
+
+msgid "IPv6防火墙"
+msgstr "Cortafuegos IPv6"
+
+msgid "开启IPv6防火墙后，将禁止所有外网对局域网设备的主动访问，提高网络安全性"
+msgstr "Después de activar el firewall IPv6, se prohibirá que todas las redes externas accedan activamente a los dispositivos LAN para mejorar la seguridad de la red."
+
+msgid "全LAN口"
+msgstr "Puerto LAN completo"
+
+msgid "稳定版"
+msgstr "Versión estable"
+
+msgid "模式"
+msgstr "Modelo"
+
+msgid "未检测到IPv6信息"
+msgstr "Información IPv6 no detectada"
+
+msgid "如何扩展"
+msgstr "¿Cómo ampliar el acceso a "
+
+msgid "台终端接入？"
+msgstr " terminales?"
+
+msgid "1、局域网IP地址管理栏中，选择255.255.0.0掩码段。"
+msgstr "1. En la columna de administración de dirección IP de LAN, seleccione el segmento de máscara 255.255.0.0."
+
+msgid "2、保存子网掩码配置，系统将自动重启并开启"
+msgstr "2. Guarde la configuración de la máscara de subred, el sistema se reiniciará automáticamente y habilitará el soporte de acceso a "
+
+msgid "台终端接入支持。"
+msgstr " terminales."
+
+msgid "注：此时路由器管理网段将变为10.31前缀，已保存的DHCP静态绑定、端口转发、DMZ主机设置、QoS限速等需要重新配置。"
+msgstr "Nota: En este momento, el segmento de red de administración del enrutador cambiará al prefijo 10.31 y es necesario reconfigurar el enlace estático DHCP guardado, el reenvío de puertos, la configuración del host DMZ, el límite de velocidad QoS, etc."
+
+msgid "子Mesh状态"
+msgstr "Estado de Mesh"
+
+msgid "Xiaomi路由器BE3600 2.5G版"
+msgstr "Router Xiaomi BE3600 versión 2.5G"
+
+msgid "升级过程大约需要2-3分钟，路由器指示灯重新变蓝后，可以通过miwifi.com进入管理后台"
+msgstr "El proceso de actualización demora entre 2 y 3 minutos. Después de que la luz indicadora del enrutador se vuelva azul nuevamente, puede ingresar al fondo de administración a través de miwifi.com."
+
 msgid "开启后，2.4G和5G将合并显示为同一个名称，路由器将优先为终端选择5G网络。合并名称后部分终端可能离线，需重新连接。"
 msgstr ""
 "Después de activarlo, las redes de 2.4G y 5G se combinarán y se mostrarán"
