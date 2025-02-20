@@ -8,5 +8,5 @@ python\python.exe %*
 goto :EOF
 
 :menu
-python\python.exe menu.py
+python12\python.exe menu.py
 goto :EOF

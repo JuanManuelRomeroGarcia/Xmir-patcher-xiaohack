@@ -253,15 +253,25 @@ def install_requirements():
 
 if __name__ == "__main__":
     update_message = check_for_update()
+    
     if update_message:
         print(update_message)
-    
+    else:
+        print("✅ No hay actualizaciones disponibles. El sistema está actualizado.")
+
     if "Nueva versión disponible" in update_message:
-        actualizar = input("¿Desea actualizar ahora? (s/n): ").strip().lower()
+        while True:  # Bucle para validar la entrada del usuario
+            actualizar = input("¿Desea actualizar ahora? (s/n): ").strip().lower()
+            if actualizar in ["s", "n"]:
+                break  # Salimos del bucle si la entrada es válida
+            print("⚠️ Entrada no válida. Por favor, escriba 's' para actualizar o 'n' para omitir.")
+
         if actualizar == "s":
             update_repository()
             print("\n¡Actualización exitosa! Reiniciando el programa...")
 
             os.system("taskkill /F /IM cmd.exe")
-
+            sys.exit(0)
+        else:
+            print("⏳ La actualización fue omitida. Regresando al menú principal...\n")
             sys.exit(0)
