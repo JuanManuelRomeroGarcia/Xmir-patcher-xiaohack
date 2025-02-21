@@ -13,6 +13,8 @@ github_repo = "https://github.com/JuanManuelRomeroGarcia/Xmir-patcher-xiaohack.g
 local_repo_path = os.path.abspath(os.path.dirname(__file__))
 version_file = os.path.join(local_repo_path, "VERSION")
 
+EXCLUDED_FOLDERS = {"python12", "update_tmp", "tmp"}
+
 def get_local_version():
     if os.path.exists(version_file):
         with open(version_file, "r") as f:
@@ -68,14 +70,22 @@ def get_file_hash(file_path):
         return None  # Si el archivo no existe, es nuevo y debe ser extraído
 
 def extract_modified_files(zip_path, extract_path, local_repo_path):
-    """ Extrae solo archivos modificados comparando sus hashes y muestra los nombres """
+    """ Extrae solo archivos modificados comparando sus hashes y excluyendo carpetas específicas """
     with zipfile.ZipFile(zip_path, "r") as zip_ref:
         file_list = zip_ref.namelist()
+        
+        # 🔹 Filtrar archivos que pertenecen a carpetas excluidas
+        filtered_files = [
+            file for file in file_list 
+            if not any(file.startswith(f"{folder}/") or file.startswith(f"{folder}\\") or f"/{folder}/" in file or f"\\{folder}\\" in file 
+                       for folder in EXCLUDED_FOLDERS)
+        ]
+        
         modified_files = []  # Lista de archivos modificados
 
-        with tqdm(total=len(file_list), desc="Verificando archivos", unit="archivo") as progress:
-            for file in file_list:
-                if file.endswith("/"):  # Ignorar directorios
+        with tqdm(total=len(filtered_files), desc="Verificando archivos", unit="archivo") as progress:
+            for file in filtered_files:
+                if file.endswith("/") or file.endswith("\\"):  # Ignorar directorios
                     progress.update(1)
                     continue
                 
@@ -94,7 +104,7 @@ def extract_modified_files(zip_path, extract_path, local_repo_path):
 
                 progress.update(1)
 
-        return modified_files  # Devuelve la lista de archivos modificados
+        return modified_files  # Devuelve la lista de archivos modificadosificados
 
 def update_repository():
     print("Descargando la última versión de Xmir Patcher...")
@@ -132,7 +142,7 @@ def update_repository():
                 except PermissionError:
                     print(f"⚠️ No se pudo sobrescribir: {dest_path} (Archivo en uso o sin permisos)")
 
-        print("✅ Actualización completada con éxito.")
+        print("✅ Actualización archivos completada con éxito.")
 
         os.remove(zip_path)
         shutil.rmtree(extract_path, ignore_errors=True)
@@ -268,10 +278,12 @@ if __name__ == "__main__":
 
         if actualizar == "s":
             update_repository()
+            install_requirements()
             print("\n¡Actualización exitosa! Reiniciando el programa...")
 
             os.system("taskkill /F /IM cmd.exe")
             sys.exit(0)
+            
         else:
             print("⏳ La actualización fue omitida. Regresando al menú principal...\n")
             sys.exit(0)

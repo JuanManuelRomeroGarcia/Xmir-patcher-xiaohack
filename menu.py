@@ -132,7 +132,6 @@ def menu_process(level, id):
     return menu2_process(id)
 
 def menu():
-  install_requirements()
   level = 1
   while True:
     print('')
