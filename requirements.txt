@@ -17,6 +17,7 @@ bcrypt
 cffi
 pynacl
 cryptography
+qrcode
 ssh2-python>=0.27.0 ; python_version<'3.12'
 ssh2-python>=1.1.1 ; python_version>='3.12'
 #fdt

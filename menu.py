@@ -59,6 +59,7 @@ def menu1_show():
       print(' 8 - {{{ Otras funciones }}}')
   print(' 9 - [[ Reiniciar dispositivo ]]')
   print(' 10 - [[ SSH ]]')
+  print(' 11 - [[ Apoyar el proyecto (Donaciones) ]]')
   print(' 0 - Salir')
 
 
@@ -75,6 +76,7 @@ def menu1_process(id):
   if id == 8: return "__menu2"
   if id == 9: return "reboot.py"
   if id == 10: return ["ssh.py", gw.ip_addr]
+  if id == 11: return ["qr.py"]
   if id == 0: sys.exit(0)
   return None
 
