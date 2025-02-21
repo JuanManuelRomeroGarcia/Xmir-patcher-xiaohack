@@ -268,6 +268,23 @@ if __name__ == "__main__":
         print(update_message)
     else:
         print("✅ No hay actualizaciones disponibles. El sistema está actualizado.")
+        
+        # 🔹 Preguntar si desea verificar archivos manualmente
+        while True:
+            verificar = input("¿Desea volver a verificar los archivos por si algo se borró? (s/n): ").strip().lower()
+            if verificar in ["s", "n"]:
+                break
+            print("⚠️ Entrada no válida. Por favor, escriba 's' para verificar o 'n' para omitir.")
+        
+        if verificar == "s":
+            print("\n🔍 Verificando archivos nuevamente...")
+            update_repository()
+            install_requirements()
+            print("✅ Verificación de archivos completada.")
+            sys.exit(0)
+        else:
+            print("🔹 No se realizó ninguna verificación adicional.")
+            sys.exit(0)
 
     if "Nueva versión disponible" in update_message:
         while True:  # Bucle para validar la entrada del usuario
