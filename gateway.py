@@ -30,6 +30,9 @@ if sys.version_info < (3,8,0):
 from multiprocessing import shared_memory
 import xqmodel
 
+class ExploitNotWorked(Exception): pass
+
+
 
 def die(*args):
   err = 1
@@ -363,7 +366,15 @@ class Gateway():
     if not dres or dres['code'] != 0:
         raise RuntimeError(f'Error on exec command "diag_set_paras" => {dres}')
     return True
-  
+
+  def import_module(self, mod_name):
+    import importlib.util
+    mod_spec = importlib.util.spec_from_file_location(mod_name, f"{mod_name}.py")
+    mod_object = importlib.util.module_from_spec(mod_spec)
+    sys.modules[mod_name] = mod_object
+    mod_object.inited_gw = self
+    mod_spec.loader.exec_module(mod_object)
+
   def wait_shutdown(self, timeout, verbose = 1):
     if verbose:
       print('Waiting for shutdown: ', end='', flush=True)
@@ -1017,6 +1028,30 @@ class Gateway():
         
         # Retorna la salida capturada
         return output
+      
+#===============================================================================
+
+def create_gateway(timeout = 4, die_if_sshOk = True, web_login = True):
+    gw = Gateway(timeout = timeout, detect_ssh = False)
+    if gw.status < 1:
+        die(f"Xiaomi Mi Wi-Fi device not found (IP: {gw.ip_addr})")
+    print(f"device_name = {gw.device_name}")
+    print(f"rom_version = {gw.rom_version} {gw.rom_channel}")
+    print(f"mac_address = {gw.mac_address}")
+    gw.ssh_port = 22
+    ret = gw.detect_ssh(verbose = 1, interactive = True)
+    if ret == 23:
+        if gw.use_ftp:
+            die("Telnet and FTP servers already running!")
+        print("Telnet server already running, but FTP server not respond")
+    elif ret > 0:
+        if die_if_sshOk:
+            die(0, "SSH server already installed and running")
+    ccode = gw.device_info["countrycode"]
+    print(f'CountryCode = {ccode}')
+    if web_login:
+        gw.web_login()
+    return gw
 
 #===============================================================================
 if __name__ == "__main__":

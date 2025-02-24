@@ -237,7 +237,7 @@ def customize_rc_local_content(device_name):
     
     # Comandos específicos por ID de modelo
     RA70_command = """
-(sleep 60;iw reg set US; iwconfig wl0 txpower 30; iwconfig wl1 txpower 30; iwconfig wl2 txpower 30; iwconfig wl3 txpower 31; uci set wireless.wifi0.country=CN; uci set wireless.wifi1.country=EU; uci set wireless.wifi2.country=EU; uci set wireless.wifi3.country=US; uci commit wireless)&
+(sleep 60;iwconfig wl0 txpower 30; iwconfig wl1 txpower 30; iwconfig wl2 txpower 30; iwconfig wl3 txpower 31; uci set wireless.wifi0.country=CN; uci set wireless.wifi1.country=EU; uci set wireless.wifi2.country=EU; uci set wireless.wifi3.country=US; uci commit wireless)&
 """
     
     R3600_command = """
