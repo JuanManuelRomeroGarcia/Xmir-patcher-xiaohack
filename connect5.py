@@ -17,7 +17,6 @@ import json
 import xmir_base
 from gateway import *
 
-class ExploitError(Exception): pass
 
 try:
     gw = inited_gw

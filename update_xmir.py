@@ -1,4 +1,6 @@
 import os
+import platform
+import stat
 import subprocess
 import time
 import requests
@@ -14,6 +16,7 @@ local_repo_path = os.path.abspath(os.path.dirname(__file__))
 version_file = os.path.join(local_repo_path, "VERSION")
 
 EXCLUDED_FOLDERS = {"python12", "update_tmp", "tmp"}
+EXCLUDED_FILES = {""}
 
 def get_local_version():
     if os.path.exists(version_file):
@@ -78,7 +81,7 @@ def extract_modified_files(zip_path, extract_path, local_repo_path):
         filtered_files = [
             file for file in file_list 
             if not any(file.startswith(f"{folder}/") or file.startswith(f"{folder}\\") or f"/{folder}/" in file or f"\\{folder}\\" in file 
-                       for folder in EXCLUDED_FOLDERS)
+                       for folder in EXCLUDED_FOLDERS) and os.path.basename(file) not in EXCLUDED_FILES 
         ]
         
         modified_files = []  # Lista de archivos modificados
@@ -154,6 +157,30 @@ ESSENTIAL_PACKAGES = {"pip", "setuptools", "wheel", "requests", "urllib3", "cert
                       "paramiko", "pyftpdlib", "pyasyncore","pyasynchat", "cffi", "pycparser", "cryptography", 
                       "bcrypt", "pynacl", "ssh2-python"}
 
+def get_python_executable():
+    """ Devuelve la ruta correcta de Python dependiendo del sistema operativo y entorno virtual """
+    if "VIRTUAL_ENV" in os.environ:
+        return sys.executable
+    
+    base_path = os.path.dirname(__file__)
+
+    if platform.system() == "Windows":
+        return os.path.join(base_path, "python12", "python.exe")
+    
+    python_exe = os.path.join(base_path, "python12", "bin", "python3")
+    
+    if not os.path.exists(python_exe):
+        return "python3"
+    
+    return python_exe
+
+def ensure_executable(file_path):
+    """ Asegura que el archivo tenga permisos de ejecución en Linux/macOS, excepto en venv """
+    if platform.system() != "Windows" and os.path.exists(file_path):
+        if "VIRTUAL_ENV" not in os.environ:
+            st = os.stat(file_path)
+            os.chmod(file_path, st.st_mode | stat.S_IEXEC)
+
 def normalize_package_name(package_name):
     """ Normaliza el nombre del paquete para evitar errores de comparación """
     return package_name.replace("-", "_").lower()
@@ -162,54 +189,35 @@ def extract_package_name(requirement_line):
     """ Extrae el nombre del paquete sin versiones ni condiciones de Python """
     return normalize_package_name(requirement_line.split("==")[0].split(">=")[0].split("<=")[0].split("~=")[0].split(";")[0].strip())
 
-def filter_requirements_by_python_version(requirements):
-    """ Filtra los paquetes según la versión actual de Python """
-    python_version = sys.version_info[:2] 
-    filtered_packages = []
-
-    for req in requirements:
-        if ";" in req:
-            package, condition = req.split(";", 1)
-            condition = condition.strip().replace("python_version", f"{python_version[0]}.{python_version[1]}")
-            try:
-                if eval(condition):
-                    filtered_packages.append(package.strip()) 
-            except Exception:
-                continue
-        else:
-            filtered_packages.append(req.strip()) 
-
-    return filtered_packages
-
-def is_package_installed(package_name):
-    """ Verifica si un paquete está instalado en el entorno actual """
-    spec = importlib.util.find_spec(package_name)
-    return spec is not None
-
 def get_installed_packages():
     """ Obtiene la lista de paquetes instalados en el entorno actual """
-    result = subprocess.run(
-        [os.path.join(os.path.dirname(__file__), "python12", "python.exe"), "-m", "pip", "freeze"],
-        capture_output=True,
-        text=True
-    )
-    installed_packages = {normalize_package_name(line.split("==")[0]) for line in result.stdout.splitlines() if "==" in line}
-   
-   
-    pip_check = subprocess.run(
-        [os.path.join(os.path.dirname(__file__), "python12", "python.exe"), "-m", "pip", "--version"],
-        capture_output=True,
-        text=True
-    )
+    python_exe = get_python_executable()
 
-    if "pip" in pip_check.stdout:
-        installed_packages.add("pip") 
+    try:
+        result = subprocess.run(
+            [python_exe, "-m", "pip", "freeze"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        installed_packages = {extract_package_name(line) for line in result.stdout.splitlines() if "==" in line}
 
-    return installed_packages
+        pip_check = subprocess.run(
+            [python_exe, "-m", "pip", "--version"],
+            capture_output=True,
+            text=True
+        )
+        if "pip" in pip_check.stdout:
+            installed_packages.add("pip")
+
+        return installed_packages
+    except subprocess.CalledProcessError:
+        return set()
 
 def install_requirements():
     """ Verifica, instala y evita la eliminación de paquetes esenciales con barra de progreso """
-    python_exe = os.path.join(os.path.dirname(__file__), "python12", "python.exe")
+    python_exe = get_python_executable()
+    ensure_executable(python_exe)
     requirements_file = os.path.join(os.path.dirname(__file__), "requirements.txt")
 
     if not os.path.exists(requirements_file):
@@ -219,30 +227,36 @@ def install_requirements():
     try:
         print("🔍 Verificando dependencias...")
 
+        pip_check = subprocess.run(
+            [python_exe, "-m", "pip", "--version"],
+            capture_output=True,
+            text=True
+        )
+        if "pip" not in pip_check.stdout:
+            print("⚠️ Pip no está instalado. Instalándolo...")
+            subprocess.run([python_exe, "-m", "ensurepip"], check=True)
+            subprocess.run([python_exe, "-m", "pip", "install", "--upgrade", "pip"], check=True)
+
         with open(requirements_file, "r") as f:
             required_packages = [line.strip() for line in f if line.strip() and not line.startswith("#")]
 
-        filtered_packages = filter_requirements_by_python_version(required_packages)
-
-        required_package_names = {extract_package_name(pkg) for pkg in filtered_packages}
+        required_package_names = {extract_package_name(pkg) for pkg in required_packages}
 
         installed_packages = get_installed_packages()
 
-        missing_packages = [pkg for pkg in filtered_packages if extract_package_name(pkg) not in installed_packages]
-
-        packages_to_remove = installed_packages - required_package_names
-
-        packages_to_remove = packages_to_remove - {normalize_package_name(pkg) for pkg in ESSENTIAL_PACKAGES}
+        missing_packages = [pkg for pkg in required_packages if extract_package_name(pkg) not in installed_packages]
+        
+        packages_to_remove = installed_packages - required_package_names - {normalize_package_name(pkg) for pkg in ESSENTIAL_PACKAGES}
 
         cambios_realizados = False
 
         if missing_packages:
-                    print(f"📦 Instalando paquetes faltantes: {', '.join(missing_packages)}")
-                    with tqdm(total=len(missing_packages), desc="Instalando", unit="pkg") as progress:
-                        for pkg in missing_packages:
-                            subprocess.run([python_exe, "-m", "pip", "install", "-q", pkg], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-                            progress.update(1)
-                    cambios_realizados = True
+            print(f"📦 Instalando paquetes faltantes: {', '.join(missing_packages)}")
+            with tqdm(total=len(missing_packages), desc="Instalando", unit="pkg") as progress:
+                for pkg in missing_packages:
+                    subprocess.run([python_exe, "-m", "pip", "install", "--upgrade", "-q", pkg], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+                    progress.update(1)
+            cambios_realizados = True
 
         if packages_to_remove:
             print(f"🗑️ Eliminando paquetes innecesarios: {', '.join(packages_to_remove)}")

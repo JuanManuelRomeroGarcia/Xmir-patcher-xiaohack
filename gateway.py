@@ -4,8 +4,8 @@
 import os
 import sys
 import json
-import time
 import datetime
+import time
 import random
 import hashlib
 import subprocess
@@ -29,6 +29,9 @@ if sys.version_info < (3,8,0):
 
 from multiprocessing import shared_memory
 import xqmodel
+
+
+class ExploitError(Exception): pass
 
 class ExploitNotWorked(Exception): pass
 
@@ -1031,17 +1034,26 @@ class Gateway():
       
 #===============================================================================
 
-def create_gateway(timeout = 4, die_if_sshOk = True, web_login = True):
+def import_module(mod_name, gw):
+    import importlib.util
+    mod_spec = importlib.util.spec_from_file_location(mod_name, f"{mod_name}.py")
+    mod_object = importlib.util.module_from_spec(mod_spec)
+    sys.modules[mod_name] = mod_object
+    if gw is not None:
+        mod_object.inited_gw = gw
+    mod_spec.loader.exec_module(mod_object)
+
+def create_gateway(timeout = 4, die_if_sshOk = True, die_if_ftpOk = True, web_login = True, ssh_port = 22):
     gw = Gateway(timeout = timeout, detect_ssh = False)
     if gw.status < 1:
         die(f"Xiaomi Mi Wi-Fi device not found (IP: {gw.ip_addr})")
     print(f"device_name = {gw.device_name}")
     print(f"rom_version = {gw.rom_version} {gw.rom_channel}")
     print(f"mac_address = {gw.mac_address}")
-    gw.ssh_port = 22
+    gw.ssh_port = ssh_port if ssh_port else 22
     ret = gw.detect_ssh(verbose = 1, interactive = True)
     if ret == 23:
-        if gw.use_ftp:
+        if gw.use_ftp and die_if_ftpOk:
             die("Telnet and FTP servers already running!")
         print("Telnet server already running, but FTP server not respond")
     elif ret > 0:
