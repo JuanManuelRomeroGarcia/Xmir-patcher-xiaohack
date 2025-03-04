@@ -6955,3 +6955,180 @@ msgstr "Miquelón"
 # DUP
 msgid 0xFFEC254B
 msgstr "s"
+
+msgid 0x02B06026
+msgstr ""
+"*Si necesita modificar la zona horaria, cambie a la ruta principal de Mesh"
+" para modificarla, se sincronizará automáticamente con la subruta de Mesh"
+
+msgid 0x03FCC83A
+msgstr "Por favor, seleccione el puerto WAN"
+
+msgid 0x0DBB1237
+msgstr ""
+"2. Asegúrese de que la subruta que se va a agregar esté en estado no configurado"
+" (mantenga presionado el botón de reinicio durante 5 segundos para restaurar el estado no configurado);"
+
+msgid 0x0DCF73A9
+msgstr "Confirme si desea desactivar la función IPTV"
+
+msgid 0x14400DAE
+msgstr "Número de dispositivos conectados: "
+
+msgid 0x22F83390
+msgstr "Por favor, seleccione un puerto de red como puerto IPTV"
+
+msgid 0x2406B809
+msgstr "Selección inteligente del puerto WAN (recomendado)"
+
+msgid 0x26CFD986
+msgstr "” como puerto WAN"
+
+msgid 0x278EAFF6
+msgstr ""
+"Después de activarlo, 2.4G y 5G se combinarán y se mostrarán con el"
+" mismo nombre, y el router seleccionará preferentemente la red 5G para el"
+" terminal. Después de fusionar los nombres, algunos terminales pueden quedar fuera de línea y"
+" necesitarán reconectarse."
+
+msgid 0x28A2D339
+msgstr "Contraseña Wi-Fi: no establecida"
+
+msgid 0x34011096
+msgstr "La red 5G está activada en este momento"
+
+msgid 0x39632C1F
+msgstr "Zona horaria del sistema actual:"
+
+msgid 0x3A9A6E52
+msgstr "Puerto agregado"
+
+msgid 0x45F4D8A1
+msgstr "Se ha detectado que las redes Mesh son todas redes cableadas."
+
+msgid 0x4685A84E
+msgstr ""
+"Algunos dispositivos antiguos no admiten correctamente Wi-Fi 6 (802.11ax) y pueden no"
+" detectar la señal o conectarse, etc. Una vez habilitado, se cambiará al modo Wi-Fi 5"
+" (802.11ac) para resolver cualquier problema de compatibilidad. Sin embargo, esto también"
+" deshabilitará las funciones relacionadas con Wi-Fi 6 (802.11ax), como OFDMA, BSS coloring,"
+" etc."
+
+msgid 0x4F986D91
+msgstr "Configuración de hora"
+
+msgid 0x502C362D
+msgstr "Sincronizando la configuración del nodo Mesh..."
+
+msgid 0x52A8742A
+msgstr ""
+"Puede habilitar bandas de backhaul dedicadas para una mejor experiencia Wi-Fi"
+
+msgid 0x59A52F31
+msgstr "Puerto WAN fijo"
+
+msgid 0x5B994F9D
+msgstr ""
+"1. Confirme que tanto la ruta principal como la subruta que se va a agregar son compatibles"
+" con la función de redes Mesh de Xiaomi:"
+
+msgid 0x5E0B9FEC
+msgstr ""
+"3. Actualice la subruta que se va a agregar al firmware más reciente, reiníciela y"
+" vuelva a intentarlo (mantenga presionado el botón de reinicio durante 5 segundos para restablecerla)"
+
+msgid 0x602D46E9
+msgstr "Hora del sistema actual:"
+
+msgid 0x63EA2194
+msgstr ""
+"4. Actualice la subruta que se va a agregar al firmware más reciente, reiníciela y"
+" vuelva a intentarlo"
+
+msgid 0x69A2AD60
+msgstr "Por favor, seleccione un puerto de red"
+
+msgid 0x77E732D0
+msgstr "Buscar y agregar nodos Mesh"
+
+msgid 0x8F09C395
+msgstr "Número de dispositivos conectados --"
+
+msgid 0x91F1F04C
+msgstr "Entendido"
+
+msgid 0x93616EE3
+msgstr "2. Actualice el router principal a la última versión del firmware;"
+
+msgid 0x93F9B492
+msgstr "Identificación inteligente de los puertos de red “"
+
+msgid 0x94C9E0B1
+msgstr ""
+"Con esta función habilitada, el router Redmi habilitará la conexión a Internet IPv6"
+" (por favor, contacte a su proveedor de red para verificar que admite IPv6 antes de usarlo)"
+
+msgid 0x9B7BD06B
+msgstr "Buscando subrutas Mesh..."
+
+msgid 0xA386BFE2
+msgstr ""
+"No se ha detectado acceso a una red de banda ancha mediante cable, por favor conecte el cable"
+" de red a cualquier puerto de red"
+
+msgid 0xA762DE57
+msgstr ""
+"3. Acerque la subruta que se va a agregar a la ruta principal y vuelva a intentarlo"
+" (mantenga una distancia de 1 metro para evitar interferencias);"
+
+msgid 0xB73301CC
+msgstr "2. La pantalla está en un estado desbloqueado con la pantalla encendida"
+
+msgid 0xBE08BCF7
+msgstr ""
+"Para garantizar la experiencia del usuario, cambiar al modo Repetidor no está soportado en modo Mesh"
+
+msgid 0xCB48B8E3
+msgstr "Nombre de Wi-Fi: "
+
+msgid 0xD00B13F6
+msgstr "Escalando nodos Mesh (1-2 minutos)..."
+
+msgid 0xD712B61B
+msgstr ""
+"1. Acerque la subruta que se va a agregar a la ruta principal y vuelva a intentarlo"
+" (mantenga una distancia de 1 metro para evitar interferencias);"
+
+msgid 0xE5AFB325
+msgstr "Puede probar los siguientes métodos: "
+
+msgid 0xE6817811
+msgstr "Contraseña Wi-Fi: "
+
+msgid 0xE8590A21
+msgstr ""
+"El cable de red conectado a la banda ancha del operador puede conectarse a"
+" cualquier puerto de red"
+
+msgid 0xEE1B4A8B
+msgstr "Routers que admiten la red Mesh de Xiaomi"
+
+msgid 0xF1326B2C
+msgstr "Router Redmi"
+
+msgid 0xF1807E93
+msgstr "Confirme si desea desactivar la función de agregación de puertos LAN"
+
+msgid 0xF1B8FC7F
+msgstr "No se encontraron nodos Mesh disponibles"
+
+msgid 0xF52AD490
+msgstr ""
+"El método de cifrado Wi-Fi actual es cifrado avanzado (WPA3), y algunos"
+" modelos de teléfonos móviles pueden tener problemas de compatibilidad en este modo"
+
+msgid 0xF68D282B
+msgstr "1. Función NFC activada"
+
+msgid 0xF8499002
+msgstr "La red 5G está desactivada en este momento"

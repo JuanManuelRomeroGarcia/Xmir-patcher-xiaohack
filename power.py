@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import re
+import subprocess
 import sys
 import os
 
@@ -36,6 +38,7 @@ def mostrar_menu():
         "9. Actualizar archivo rc.local con los valores Maximos del modelo",
         "10. Configurar país Antenas para RA82",  # Solo para RA82
         "11. Configurar país Antenas para RA70",
+        "12. Configurar país en todas las interfaces detectadas",
         "0. Salir"
     ]
 
@@ -80,6 +83,15 @@ def mostrar_menu():
             opcion_especifica_ra82()  # Ejecutar la opción específica para RA82
         elif opcion == '11' and model_id == 37:
             opcion_especifica_ra70()  # Ejecutar la opción específica para RA82
+        elif opcion == '12':
+            nuevo_pais = input("Ingrese el código del país (ej. US, EU, CN): ").strip().upper()
+            if len(nuevo_pais) < 2:
+                print("❌ Código de país inválido.")
+                continue
+
+            cambiar_pais_interfaces(nuevo_pais)  # ✅ Se corrige la llamada a la función
+
+            
         elif opcion == '0':
             print("Saliendo del programa.")
             break
@@ -264,6 +276,170 @@ def customize_rc_local_content(device_name):
         print(unsupported_model_message)
         print("Si su modelo no es soportado, mande un email a administracion@xiaohack.es con el modelo para su investigación.")
         return None
+
+def guardar_en_rc_local(nuevo_pais):
+    """
+    Guarda la configuración del país en /etc/rc.local asegurando que:
+    - Se mantiene solo una línea en blanco después del (sleep ...).
+    - Se reemplaza correctamente la configuración previa de `(sleep 60; ...)`.
+    - `exit 0` siempre está al final con solo una línea en blanco antes.
+    """
+    try:
+        # Obtener la potencia de transmisión deseada del usuario
+        while True:
+            potencia_tx = input("Ingrese la potencia de transmisión (txpower) en dBm [Ejemplo: 30]: ").strip()
+            if potencia_tx.isdigit() and 1 <= int(potencia_tx) <= 33:  # Rango válido para OpenWrt
+                potencia_tx = int(potencia_tx)
+                break
+            else:
+                print("❌ Entrada inválida. Ingrese un número entre 1 y 33 dBm.")
+
+        # Obtener las interfaces Wi-Fi configurables (wifiX)
+        salida_uci = gw.run_cmd_with_output("uci show wireless | grep country")
+        interfaces_wifi = re.findall(r'wireless\.(wifi\d+)\.country=', salida_uci)
+
+        # Obtener todas las interfaces de transmisión desde `iw dev`
+        salida_iw = gw.run_cmd_with_output("iw dev")
+        interfaces_detectadas = re.findall(r'Interface (\S+)', salida_iw)
+
+        # Filtrar interfaces de transmisión (wlX) y Wi-Fi (wifiX)
+        interfaces_wl = [iface for iface in interfaces_detectadas if iface.startswith("wl")]
+        interfaces_wifi = [iface for iface in interfaces_detectadas if iface.startswith("wifi")]
+
+        if not interfaces_wifi:
+            print("⚠️ No se encontraron interfaces 'wifiX' para configurar el país.")
+            return
+
+        if not interfaces_wl:
+            print(f"⚠️ No se encontraron interfaces 'wlX' para configurar la potencia de transmisión.")
+            print(f"🔍 Interfaces detectadas en el sistema: {interfaces_detectadas}")
+
+        # Construcción de los comandos para cambiar potencia y país
+        comandos_txpower = [f"iwconfig {wl} txpower {potencia_tx}" for wl in interfaces_wl]
+        comandos_pais = [f"uci set wireless.{wifi}.country='{nuevo_pais}'" for wifi in interfaces_wifi]
+
+        # Crear la nueva línea de configuración que queremos introducir
+        nueva_configuracion = f"(sleep 60; {'; '.join(comandos_txpower)}; {'; '.join(comandos_pais)}; uci commit wireless)&"
+
+        # Obtener el contenido actual de `/etc/rc.local`
+        rc_local_actual = gw.run_cmd_with_output("cat /etc/rc.local").splitlines()
+
+        # Lista final sin acumulación de espacios
+        rc_local_limpio = []
+        posicion_sleep = -1
+        contenido_extra = []
+        agrego_linea_vacia = False
+
+        for i, line in enumerate(rc_local_actual):
+            stripped_line = line.strip()
+
+            if stripped_line.startswith("(sleep 60;"):
+                posicion_sleep = i  # Guardar la posición del antiguo `sleep`
+                continue  # Omitir línea vieja
+
+            if stripped_line == "exit 0":
+                break  # No agregar líneas extra después de `exit 0`
+
+            # Si es una línea vacía, solo agregarla si no se ha agregado una antes
+            if stripped_line == "":
+                if not agrego_linea_vacia:
+                    rc_local_limpio.append("")
+                    agrego_linea_vacia = True
+                continue
+
+            rc_local_limpio.append(stripped_line)
+            agrego_linea_vacia = False  # Restablecer el control de línea vacía
+
+        # Asegurar que haya exactamente UNA línea en blanco después del segundo comentario
+        if len(rc_local_limpio) >= 2 and rc_local_limpio[1] != "":
+            rc_local_limpio.insert(2, "")
+
+        # Insertar la nueva configuración en la misma posición donde estaba `(sleep 60; ...)`
+        if posicion_sleep != -1:
+            rc_local_limpio.insert(posicion_sleep, nueva_configuracion)
+        else:
+            # Si no existía `(sleep 60; ...)`, agregarlo antes del contenido extra
+            rc_local_limpio.append(nueva_configuracion)
+
+        # Eliminar líneas en blanco innecesarias antes de `exit 0`
+        while rc_local_limpio and rc_local_limpio[-1] == "":
+            rc_local_limpio.pop()
+
+        # Agregar solo una línea en blanco antes de `exit 0`
+        rc_local_limpio.append("")
+        rc_local_limpio.append("exit 0")
+
+        # Unir las líneas en un solo string sin líneas vacías extras
+        nuevo_contenido = "\n".join(rc_local_limpio)
+
+        # Guardar en el router
+        comando_guardado = f'echo "{nuevo_contenido}" > /etc/rc.local'
+        gw.run_cmd_with_output(comando_guardado)
+
+        print(f"✅ Configuración guardada en /etc/rc.local correctamente con potencia {potencia_tx} dBm.")
+
+    except Exception as e:
+        print(f"❌ Error al guardar en /etc/rc.local: {str(e)}")
+
+
+
+def obtener_interfaces_wifi():
+    """Ejecuta 'uci show wireless | grep country' en el router y obtiene solo las interfaces Wi-Fi configurables."""
+    try:
+        # Obtener la configuración de país desde UCI
+        salida = gw.run_cmd_with_output("uci show wireless | grep country")
+
+        if not salida:
+            print("❌ No se pudo obtener la configuración de país de las interfaces Wi-Fi.")
+            return []
+
+        # Extraer solo las interfaces que tienen una configuración de 'country'
+        interfaces = re.findall(r'wireless\.(wifi\d+)\.country=', salida)
+
+        if not interfaces:
+            print("⚠️ No se encontraron interfaces Wi-Fi configurables con opción 'country'.")
+        return interfaces
+
+    except Exception as e:
+        print(f"❌ Error al ejecutar 'uci show wireless': {str(e)}")
+        return []
+
+
+def cambiar_pais_interfaces(nuevo_pais):
+    """
+    Cambia la configuración del país para cada interfaz Wi-Fi válida ('wifiX') en OpenWrt usando 'uci'.
+    Luego pregunta si se desea guardar en rc.local.
+    """
+    interfaces_wifi = obtener_interfaces_wifi()
+    
+    if not interfaces_wifi:
+        print("❌ No hay interfaces Wi-Fi configurables con opción 'country'.")
+        return
+
+    for interfaz in interfaces_wifi:
+        comando = f"uci set wireless.{interfaz}.country='{nuevo_pais}'"
+        try:
+            salida = gw.run_cmd_with_output(comando)
+            if salida:
+                print(f"✅ País cambiado a '{nuevo_pais}' en {interfaz}. Respuesta: {salida}")
+            else:
+                print(f"✅ País cambiado a '{nuevo_pais}' en {interfaz}. ejecutado exitosamente.")
+        except Exception as e:
+            print(f"❌ Error al cambiar el país en {interfaz}: {str(e)}")
+
+    # Preguntar si desea guardar los cambios en rc.local
+    opcion_guardar = input("¿Desea guardar estos cambios en /etc/rc.local para que sean permanentes? (S/N): ").strip().lower()
+
+    if opcion_guardar == 's':
+        guardar_en_rc_local(nuevo_pais)
+
+    # Aplicar y guardar los cambios en el sistema
+    try:
+        gw.run_cmd_with_output("uci commit wireless")
+        #gw.run_cmd_with_output("wifi reload")
+        print("✅ Configuración guardada y Wi-Fi reiniciado.")
+    except Exception as e:
+        print(f"❌ Error al aplicar los cambios: {str(e)}")
 
 if __name__ == "__main__":
     mostrar_menu()

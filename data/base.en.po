@@ -6719,3 +6719,182 @@ msgstr "Miquelon"
 msgid 0xFFEC254B
 msgstr "s"
 
+msgid 0x02B06026
+msgstr ""
+"*If you need to modify the time zone, please switch to the main Mesh route"
+" to modify, it will be automatically synchronized to the sub-Mesh route"
+
+msgid 0x03FCC83A
+msgstr "Please select WAN port"
+
+msgid 0x0DBB1237
+msgstr ""
+"2. Make sure that the sub-route to be added is in the unconfigured state"
+" (press and hold the Reset button for 5 seconds to restore the unconfigured"
+" state);"
+
+msgid 0x0DCF73A9
+msgstr "Confirm whether to turn off the IPTV function"
+
+msgid 0x14400DAE
+msgstr "Number of connected devices: "
+
+msgid 0x22F83390
+msgstr "Please select a network port as IPTV port"
+
+msgid 0x2406B809
+msgstr "Smart selection of WAN port (recommended)"
+
+msgid 0x26CFD986
+msgstr "” as WAN port"
+
+msgid 0x278EAFF6
+msgstr ""
+"After it is turned on, 2.4G and 5G will be combined and displayed as the"
+" same name, and the router will preferentially select the 5G network for the"
+" terminal. After the names are merged, some terminals may be offline and"
+" need to be reconnected."
+
+msgid 0x28A2D339
+msgstr "Wi-Fi password: not set"
+
+msgid 0x34011096
+msgstr "5G network is turned on at this time"
+
+msgid 0x39632C1F
+msgstr "Current system time zone:"
+
+msgid 0x3A9A6E52
+msgstr "Aggregate port"
+
+msgid 0x45F4D8A1
+msgstr "It is detected that the Mesh networks are all wired networks."
+
+msgid 0x4685A84E
+msgstr ""
+"Some older devices do not support Wi-Fi 6 (802.11ax) properly and may not"
+" scan the signal or connect, etc. Once enabled, it will switch to Wi-Fi 5"
+" (802.11ac) mode to solve any compatibility issues. However, it will also"
+" disable Wi-Fi 6 (802.11ax) related functions, such as OFDMA, BSS coloring,"
+" etc."
+
+msgid 0x4F986D91
+msgstr "Time settings"
+
+msgid 0x502C362D
+msgstr "Synchronizing Mesh node configuration..."
+
+msgid 0x52A8742A
+msgstr ""
+"You can open up dedicated backhaul bands for a better Wi-Fi experience"
+
+msgid 0x59A52F31
+msgstr "Fixed WAN port"
+
+msgid 0x5B994F9D
+msgstr ""
+"1. Confirm that both the main routeк and the sub-routeк to be added support"
+" the Xiaomi Mesh networking function:"
+
+msgid 0x5E0B9FEC
+msgstr ""
+"3. Upgrade the sub-route to be added to the latest firmware, reset it and"
+" try again (press and hold the Reset button for 5 seconds to reset)"
+
+msgid 0x602D46E9
+msgstr "Current system time:"
+
+msgid 0x63EA2194
+msgstr ""
+"4. Upgrade the sub-router to be added to the latest firmware, reset it and"
+" try again"
+
+msgid 0x69A2AD60
+msgstr "Please select a network port"
+
+msgid 0x77E732D0
+msgstr "Search and add Mesh nodes"
+
+msgid 0x8F09C395
+msgstr "Number of connected devices --"
+
+msgid 0x91F1F04C
+msgstr "understood"
+
+msgid 0x93616EE3
+msgstr "2. Upgrade the main router to the latest firmware version;"
+
+msgid 0x93F9B492
+msgstr "Intelligent identification of network ports “"
+
+msgid 0x94C9E0B1
+msgstr ""
+"With this function enabled, the Redmi router will enable the IPv6 Internet"
+" connection function (please contact the network provider to verify that it"
+" supports IPv6 before use)"
+
+msgid 0x9B7BD06B
+msgstr "Search for Mesh sub-routes..."
+
+msgid 0xA386BFE2
+msgstr ""
+"No broadband network cable access is detected, please connect the network"
+" cable to any network port"
+
+msgid 0xA762DE57
+msgstr ""
+"3. Move the sub-route to be added close to the main route and try again"
+" (keep a distance of 1 meter away to avoid interference);"
+
+msgid 0xB73301CC
+msgstr "2. The screen is in a bright screen unlocked state"
+
+msgid 0xBE08BCF7
+msgstr ""
+"To ensure user experience, switching to Relay mode is not supported in Mesh"
+" mode"
+
+msgid 0xCB48B8E3
+msgstr "Wi-Fi name: "
+
+msgid 0xD00B13F6
+msgstr "Scaling Mesh nodes (1-2 minutes)..."
+
+msgid 0xD712B61B
+msgstr ""
+"1. Move the sub-route to be added close to the main route and try again"
+" (keep a distance of 1 meter to avoid interference);"
+
+msgid 0xE5AFB325
+msgstr "You can try the following methods: "
+
+msgid 0xE6817811
+msgstr "Wi-Fi password: "
+
+msgid 0xE8590A21
+msgstr ""
+"The network cable connected to the operator's broadband can be plugged into"
+" any network port"
+
+msgid 0xEE1B4A8B
+msgstr "Routers that support Xiaomi Mesh networking"
+
+msgid 0xF1326B2C
+msgstr "Redmi router"
+
+msgid 0xF1807E93
+msgstr "Confirm whether to disable the LAN port aggregation function"
+
+msgid 0xF1B8FC7F
+msgstr "No Mesh nodes found available"
+
+msgid 0xF52AD490
+msgstr ""
+"The current Wi-Fi encryption method is super encryption (WPA3), and some"
+" models of mobile phones may have compatibility problems in this mode"
+
+msgid 0xF68D282B
+msgstr "1. NFC function on"
+
+msgid 0xF8499002
+msgstr "5G network is turned off at this time"
