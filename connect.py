@@ -6,8 +6,8 @@ import sys
 import time
 
 import xmir_base
-
 from gateway import *
+
 
 gw = Gateway(detect_device = False, detect_ssh = False)
 
@@ -20,7 +20,7 @@ if len(sys.argv) > 1:
 gw.set_timeout(4)
 gw.detect_device()
 if gw.status < 1:
-  die(f"Xiaomi Mi Wi-Fi device not found (IP: {gw.ip_addr})")
+    die(f"Xiaomi Mi Wi-Fi device not found (IP: {gw.ip_addr})")
 
 dn = gw.device_name
 
@@ -49,7 +49,7 @@ if gw.model_id > 0 and gw.model_id < gw.get_modelid_by_name('R2100'):
 #  sys.exit(0)
 
 if True:
-      # init gw and check ssh
+    # init gw and check ssh
     gw = create_gateway(timeout = 4, die_if_sshOk = True, die_if_ftpOk = True, web_login = True)
 
     exp_modules = [
