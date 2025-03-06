@@ -3,6 +3,7 @@ import platform
 import stat
 import subprocess
 import time
+import webbrowser
 import requests
 import zipfile
 import shutil
@@ -149,6 +150,10 @@ def update_repository():
 
         os.remove(zip_path)
         shutil.rmtree(extract_path, ignore_errors=True)
+        
+        latest_release_url = "https://github.com/JuanManuelRomeroGarcia/Xmir-patcher-xiaohack/releases/latest"
+        print(f"🔗 Redirigiendo a la última versión en GitHub: {latest_release_url}")
+        webbrowser.open(latest_release_url)
         
     except Exception as e:
         print(f"❌ Error al actualizar: {e}")

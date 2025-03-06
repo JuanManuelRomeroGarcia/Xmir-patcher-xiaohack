@@ -472,7 +472,7 @@ msgstr "En el modo de Doble WAN, no se admite configurar el ancho de banda de la
 
 # msgid 0xE6817811
 msgid "Wi-Fi密码："
-msgstr "Contraseña Wi-Fi:"
+msgstr "Contraseña Wi-Fi: "
 
 # msgid 0x8F09C395
 msgid "连接设备数量 --"
@@ -480,7 +480,7 @@ msgstr "Número de dispositivos conectados --"
 
 # msgid 0xCB48B8E3
 msgid "Wi-Fi名称："
-msgstr "Nombre Wi-Fi:"
+msgstr "Nombre Wi-Fi: "
 
 # msgid 0x28A2D339
 msgid "Wi-Fi密码: 未设置"
@@ -488,7 +488,7 @@ msgstr "Contraseña Wi-Fi: no configurada"
 
 # msgid 0x14400DAE
 msgid "连接设备数量："
-msgstr "Número de dispositivos conectados:"
+msgstr "Número de dispositivos conectados: "
 
 # msgid 0x45F4D8A1
 msgid "检测到Mesh网络均为有线组网，"
