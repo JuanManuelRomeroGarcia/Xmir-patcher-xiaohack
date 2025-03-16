@@ -1,4 +1,10 @@
 # XMiR-Patcher XiaoHack
+
+[![Download latest](https://img.shields.io/badge/Download_latest-green)](https://github.com/JuanManuelRomeroGarcia/Xmir-patcher-xiaohack/releases/latest/download/Xmir-patcher-xiaohack-main.zip)
+[![ViewCount](https://views.whatilearened.today/views/github/JuanManuelRomeroGarcia/Xmir-patcher-xiaohack.svg)](https://github.com/JuanManuelRomeroGarcia/Xmir-patcher-xiaohack)
+[![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FJuanManuelRomeroGarcia%2FXmir-patcher-xiaohack&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://github.com/JuanManuelRomeroGarcia/Xmir-patcher-xiaohack)
+
+
 **Firmware patcher for Xiaomi routers**  
 
 XMiR-Patcher es una herramienta diseñada para facilitar la instalación y personalización de firmware en routers Xiaomi. Con este parcheador, puedes desbloquear nuevas funciones y optimizar el rendimiento de tu router.  
