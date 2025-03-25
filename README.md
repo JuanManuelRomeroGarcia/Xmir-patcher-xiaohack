@@ -16,7 +16,7 @@ Para obtener instrucciones detalladas sobre el uso de XMiR-Patcher, visita el ma
 ## 🚀 Uso  
 
 ### 🖥️ Windows  
-1. Ejecuta `Xmir XiaoHack.exe`  
+1. Ejecuta `Xmir XiaoHack.bat`  
 
 ### 🐧 Linux / 🍏 macOS  
 1. Instala **Python 3.8** y **OpenSSL**  
