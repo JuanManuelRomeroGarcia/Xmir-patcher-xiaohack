@@ -70,6 +70,12 @@ msgstr "Puerto LAN completo"
 msgid "稳定版"
 msgstr "Versión estable"
 
+msgid " 连接设备数量: "
+msgstr "Dispositivos conectados "
+
+msgid " Xiaomi路由器BE7000"
+msgstr " Enrutador Xiaomi BE7000 "
+
 msgid "模式"
 msgstr "Modelo"
 
