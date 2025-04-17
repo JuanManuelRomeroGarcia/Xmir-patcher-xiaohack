@@ -3,38 +3,46 @@
 set -e
 
 if [ ! -f "./xmir_base/xmir_init.py" ]; then
-	echo "ERROR: XMiR: Current working directory is not correct!"
-	return 1
+	echo "ERROR: XMiR: Current working directory not correct!"
+	exit 1
 fi
 
 PY3_PATH=`which python3`
-if [ "$PY3_PATH" = "" ]; then
+if [ ! -e "$PY3_PATH" ]; then
 	echo "ERROR: XMiR: python3 binary not found!"
-	return 1
+	exit 1
 fi
 
-if [ "$VIRTUAL_ENV" = "" -o ! -e "$VIRTUAL_ENV/bin/python3" ]; then
-	CLEAN_INSTALL=true
-	[ -e "./venv/pyvenv.cfg" ] && CLEAN_INSTALL=false
+if [ ! -e "$VIRTUAL_ENV" ] || ! type deactivate &> /dev/null ; then
 	python3 -m venv venv
 	if [ ! -e "./venv/bin/activate" ]; then
 		echo "ERROR: XMiR: python3 venv not initialized!"
-		return 1
+		exit 1
 	fi
 	source ./venv/bin/activate
 	PY3_PATH=`which python3`
-	if [ "$PY3_PATH" = "" ]; then
+	if [ ! -e "$PY3_PATH" ]; then
 		echo "ERROR: XMiR: python3 venv binary not found!"
-		return 1
-	fi
-	if [ "$CLEAN_INSTALL" = "true" ]; then
-		python3 -m pip install -r requirements.txt
+		deactivate
+		exit 1
 	fi
 fi
+if [ ! -e "$VIRTUAL_ENV" ] || ! type deactivate &> /dev/null ; then
+	echo "ERROR: XMiR: python3 venv cannot activate!"
+	exit 1
+fi
 
-if [ "$VIRTUAL_ENV" = "" -o ! -e "$VIRTUAL_ENV/bin/python3" ]; then
-	echo "ERROR: XMiR: python3 binary not founded!"
-	return 1
+SSH2_PKG=`find ./venv -type d -wholename '*/site-packages/ssh2_python*' | wc -l | tr -d ' '`
+if [ "$SSH2_PKG" = "0" ]; then
+	# install
+	python3 -m pip install -r requirements.txt
+	# check
+	SSH2_PKG=`find ./venv -type d -wholename '*/site-packages/ssh2_python*' | wc -l | tr -d ' '`
+	if [ "$SSH2_PKG" = "0" ]; then
+		echo "ERROR: XMiR: python3 package 'ssh2-python' not installed!"
+		deactivate
+		exit 1
+	fi
 fi
 
 export PYTHONUNBUFFERED=TRUE

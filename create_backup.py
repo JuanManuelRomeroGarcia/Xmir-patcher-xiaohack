@@ -57,7 +57,7 @@ def backup_and_download(pid, filename, part_size, file_bar):
         cmd = f"rm -f {fn_remote} ; dd if=/dev/mtd{pid} of={fn_remote} bs={blk_size} count=1 skip={skip}"
         ret = gw.run_cmd(cmd, timeout=25, die_on_error=False)
 
-        if not ret:
+        if ret is None:
             print(f'ERROR al ejecutar el comando: "{cmd}"')
             error_count += 1
             continue  # Continuar con el siguiente bloque en caso de error

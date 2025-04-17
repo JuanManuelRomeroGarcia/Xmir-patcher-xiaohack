@@ -4,11 +4,13 @@
 import os
 import sys
 import json
-import datetime
 import time
+import datetime
 import random
 import hashlib
 import subprocess
+import gzip
+import base64
 import re
 import requests
 import atexit
@@ -75,6 +77,7 @@ class Gateway():
     self.nonce_key = None
     self.stok = None    # HTTP session token
     self.status = -2
+    self.errcode = -1
     self.ftp = None
     self.socket = None  # TCP socket for SSH 
     self.ssh = None     # SSH session
@@ -109,49 +112,49 @@ class Gateway():
         die("Can't found valid SSH server on IP {}".format(self.ip_addr))
 
   def api_request(self, path, params = None, resp = 'json', post = '', timeout = 4, stream = False):
-      self.last_resp_code = 0
-      self.last_resp_text = None
-      headers = { }
-      if post == 'raw' or post == 'bin':
-          headers["Content-Type"] = "application/octet-stream"
-      elif post == 'json':
-          headers["Content-Type"] = "application/json"
-      elif post:
-          headers["Content-Type"] = "application/x-www-form-urlencoded; charset=UTF-8"
-      headers["User-Agent"] = self.user_agent
-      url = f"http://{self.ip_addr}/cgi-bin/luci/"
-      if path.startswith('API/'):
-          url += f';stok={self.stok}/api' + path[3:]
-      else:
-          url += path
-      t_timeout = (self.con_timeout, timeout) if timeout is not None else (self.con_timeout, self.timeout)
-      #print(f'{t_timeout=}')
-      if post:
-          response = requests.post(url,  data = params, stream = stream, headers = headers, timeout = t_timeout)
-      else:
-          response = requests.get(url, params = params, stream = stream, headers = headers, timeout = t_timeout)
-      self.last_resp_code = response.status_code
-      if resp and not stream:
-          try:
-              self.last_resp_text = response.text
-          except Exception:
-              pass
-          if resp == 'text':
-              return response.text
-          if resp == 'TEXT':
-              response.raise_for_status()
-              return response.text
-          if resp.lower() == 'json':
-              if response.status_code == 500:  # Internal Server Error
-                  return None
-              response.raise_for_status()
-              try:
-                  dres = json.loads(response.text)
-              except Exception:
+    self.last_resp_code = 0
+    self.last_resp_text = None
+    headers = { }
+    if post == 'raw' or post == 'bin':
+        headers["Content-Type"] = "application/octet-stream"
+    elif post == 'json':
+        headers["Content-Type"] = "application/json"
+    elif post:
+        headers["Content-Type"] = "application/x-www-form-urlencoded; charset=UTF-8"
+    headers["User-Agent"] = self.user_agent
+    url = f"http://{self.ip_addr}/cgi-bin/luci/"
+    if path.startswith('API/'):
+        url += f';stok={self.stok}/api' + path[3:]
+    else:
+        url += path
+    t_timeout = (self.con_timeout, timeout) if timeout is not None else (self.con_timeout, self.timeout)
+    #print(f'{t_timeout=}')
+    if post:
+        response = requests.post(url,  data = params, stream = stream, headers = headers, timeout = t_timeout)
+    else:
+        response = requests.get(url, params = params, stream = stream, headers = headers, timeout = t_timeout)
+    self.last_resp_code = response.status_code
+    if resp and not stream:
+        try:
+            self.last_resp_text = response.text
+        except Exception:
+            pass
+        if resp == 'text':
+            return response.text
+        if resp == 'TEXT':
+            response.raise_for_status()
+            return response.text
+        if resp.lower() == 'json':
+            if response.status_code == 500:  # Internal Server Error
+                return None
+            response.raise_for_status()
+            try:
+                dres = json.loads(response.text)
+            except Exception:
                 raise RuntimeError(f'Received incorrect JSON from "{path}" => {response.text}')
-              return dres
-      return response
-      #return response.status_code, response.content
+            return dres
+    return response
+    #return response.status_code, response.content
 
   def detect_device(self):
     self.model_id = -2
@@ -261,13 +264,13 @@ class Gateway():
   def web_login(self, timeout = 4):
     self.stok = None
     if not self.nonce_key or not self.mac_address:
-      die("El dispositivo Xiaomi Mi Wi-Fi es un modelo incorrecto o no el firmware de stock en él.")
+      die("Xiaomi Mi Wi-Fi device is wrong model or not the stock firmware in it.")
     dtype = 0 # 0: Web, 1: Android, 2: iOS, 3: Mac, 4: PC 
     device = self.mac_address
     nonce = "{}_{}_{}_{}".format(dtype, device, int(time.time()), random.randint(1000, 10000))
     web_pass = self.webpassword
     if not web_pass:
-      web_pass = input("Introduzca la contraseña de la interfaz WEB: ")
+      web_pass = input("Enter device WEB password: ")
     account_str = (web_pass + self.nonce_key).encode('utf-8')
     account_str = self.xqhash(account_str)
     password = (nonce + account_str).encode('utf-8')
@@ -279,7 +282,7 @@ class Gateway():
       stok = re.findall(r'"token":"(.*?)"', text)[0]
     except Exception:
       self.webpassword = ""
-      die("¡La contraseña WEB no es correcta!  (encryptmode = {})".format(self.encryptmode))
+      die("WEB password is not correct! (encryptmode = {})".format(self.encryptmode))
     self.webpassword = web_pass
     self.stok = stok
     return stok
@@ -289,13 +292,13 @@ class Gateway():
     return "http://{ip_addr}/cgi-bin/luci/;stok={stok}/api/".format(ip_addr = self.ip_addr, stok = self.stok)
 
   def get_pub_info(self, api_name, timeout = 5):
-        if '/' in api_name:
-          path = api_name
-        elif api_name in [ 'router_info', 'topo_graph' ]:
-            path = f'api/misystem/{api_name}'
-        else:
-            path = f'api/xqsystem/{api_name}'
-        return self.api_request(path, timeout = timeout)
+    if '/' in api_name:
+        path = api_name
+    elif api_name in [ 'router_info', 'topo_graph' ]:
+        path = f'api/misystem/{api_name}'
+    else:
+        path = f'api/xqsystem/{api_name}'
+    return self.api_request(path, timeout = timeout)
 
   def get_init_info(self, timeout = 5):
     return self.get_pub_info('init_info', timeout = timeout)
@@ -322,14 +325,14 @@ class Gateway():
   def get_device_systime(self, fix_tz = True):
     # http://192.168.31.1/cgi-bin/luci/;stok=14b996378966455753104d187c1150b4/api/misystem/sys_time
     # response: {"time":{"min":32,"day":4,"index":0,"month":10,"year":2023,"sec":7,"hour":6,"timezone":"XXX"},"code":0}
-        dres = self.api_request('API/misystem/sys_time')
-        if not dres or dres['code'] != 0:
-            raise RuntimeError(f'Error on get sys_time => {dres}')
-        dst = dres['time']
-        if fix_tz and 'timezone' in dst:
-          if "'" in dst['timezone'] or ";" in dst['timezone']:
-              dst['timezone'] = "GMT0"
-        return dst
+    dres = self.api_request('API/misystem/sys_time')
+    if not dres or dres['code'] != 0:
+        raise RuntimeError(f'Error on get sys_time => {dres}')
+    dst = dres['time']
+    if fix_tz and 'timezone' in dst:
+        if "'" in dst['timezone'] or ";" in dst['timezone']:
+            dst['timezone'] = "GMT0"
+    return dst
 
   def set_device_systime(self, dst, year = 0, month = 0, day = 0, hour = 0, min = 0, sec = 0, timezone = "", wait = True):
     if dst:
@@ -348,7 +351,8 @@ class Gateway():
         time.sleep(3.1) # because internal code exec: "echo 'ok,xiaoqiang' > /tmp/ntp.status; sleep 3; date -s \""..time.."\""
     return True
 
-  def get_diag_paras(self, timeout = None):    # http://192.168.31.1/cgi-bin/luci/;stok=14b996378966455753104d187c1150b4/api/xqnetwork/diag_get_paras
+  def get_diag_paras(self, timeout = None):
+    # http://192.168.31.1/cgi-bin/luci/;stok=14b996378966455753104d187c1150b4/api/xqnetwork/diag_get_paras
     # response: {"code":0,"signal_thr":"-60","usb_read_thr":0,"disk_write_thr":0,"disk_read_thr":0,"iperf_test_thr":"25","usb_write_thr":0}
     dres = self.api_request('API/xqnetwork/diag_get_paras', timeout = timeout)
     if not dres or dres['code'] != 0:
@@ -358,7 +362,6 @@ class Gateway():
   def get_diag_iperf_test_thr(self, timeout = None):
     resp = self.get_diag_paras(timeout = timeout)
     return str(resp['iperf_test_thr'])
-
 
   def set_diag_paras(self, iperf_test_thr=20, usb_read_thr=0, usb_write_thr=0, disk_read_thr=0, disk_write_thr=0, timeout=None):
     params = {
@@ -417,14 +420,6 @@ class Gateway():
     # hackCheck not detected
     return self.hackCheck
 
-  def import_module(self, mod_name):
-    import importlib.util
-    mod_spec = importlib.util.spec_from_file_location(mod_name, f"{mod_name}.py")
-    mod_object = importlib.util.module_from_spec(mod_spec)
-    sys.modules[mod_name] = mod_object
-    mod_object.inited_gw = self
-    mod_spec.loader.exec_module(mod_object)
-
   def wait_shutdown(self, timeout, verbose = 1):
     if verbose:
       print('Waiting for shutdown: ', end='', flush=True)
@@ -482,16 +477,12 @@ class Gateway():
   def shutdown(self):
     self.ssh_close()
     try:
-      self.ftp.quit()
-    except Exception:
-      pass
-    try:
       self.ftp.close()
     except Exception:
       pass
     self.ftp = None
 
-   #===============================================================================
+  #===============================================================================
   def free_memcfg(self):
     if self.memcfg:
       if os.name != "nt":
@@ -553,7 +544,7 @@ class Gateway():
     if size > 0:
       self.memcfg.buf[4:4+len(data)] = data
 
- #===============================================================================
+  #===============================================================================
   @property
   def ssh_port(self):
     return self.get_memcfg_param('ssh_port', 22)
@@ -685,7 +676,7 @@ class Gateway():
         plist.append(port)
     if not plist:
       if verbose >= 2:
-        print("No se puede encontrar un servidor SSH válido en IP {}".format(ip_addr))
+        print("Can't found valid SSH server on IP {}".format(ip_addr))
       return -1
     if passw:
       pswlist = [ passw ]
@@ -697,22 +688,22 @@ class Gateway():
       if psw is None:
         if not interactive:
           continue
-        psw = input('Introduzca la contraseña del usuario "root": ')
+        psw = input('Enter password for "root" user: ')
       for i, port in enumerate(plist):
         ret = self.check_ssh(ip_addr, port, psw, contimeout = contimeout)
         if ret >= 0:
           self.passw = psw
           self.ssh_port = port
           if verbose:
-            print("Detectado servidor SSH válido en el puerto {} (auth OK)".format(port))
+            print("Detect valid SSH server on port {} (auth OK)".format(port))
           return port
         if ret == -3 and passw and psw == passw:
           if verbose:
-            print("Establecer contraseña SSH = Ninguno")
+            print("Set SSH password = None")
           self.passw = None
           passw = None
     if verbose >= 2:
-      print("No se puede encontrar un servidor SSH válido en IP {}".format(ip_addr))
+      print("Can't found valid SSH server on IP {}".format(ip_addr))
     return -2
 
   def detect_ssh(self, verbose = 1, interactive = True, contimeout = 2, aux_port = 0):
@@ -734,7 +725,8 @@ class Gateway():
     self.passw = passw
     ftp_en = self.check_tcp_connect(self.ip_addr, 21, contimeout = 1)
     if ftp_en:
-      self.use_ftp = True
+      if self.check_ftp(check_upload = True) == 0:
+        self.use_ftp = True
     return 23
 
   def ssh_close(self):
@@ -786,7 +778,7 @@ class Gateway():
     except Exception as e:
       #print(e)
       if verbose:
-        die("Servidor SSH no responde (IP: {})".format(self.ip_addr))
+        die("SSH server not responding (IP: {})".format(self.ip_addr))
       self.shutdown()
     return None
 
@@ -797,46 +789,81 @@ class Gateway():
       return True
     except Exception as e:
       if verbose:
-        die("TELNET no responde (IP: {})".format(self.ip_addr))
+        die(f"TELNET not responding (IP: {self.ip_addr})")
     return False
 
   def get_telnet(self, verbose = 0, password = None):
+    from telnetlib import NOP, IAC, SB, NAWS, SE
     try:
       tn = telnetlib.Telnet(self.ip_addr, timeout=4)
     except Exception as e:
       if verbose:
-        die("TELNET no responde (IP: {})".format(self.ip_addr))
+        die("TELNET not responding (IP: {self.ip_addr})")
       return None
     try:
       p_login = b'login: '
       p_passw = b'Password: '
-      prompt = "{}@XiaoQiang:(.*?)#".format(self.login).encode('ascii')
+      prompt = f"{self.login}@XiaoQiang:(.*?)# ".encode('ascii')
       idx, obj, output = tn.expect([p_login, prompt], timeout=2)
       if idx < 0:
-        raise Exception('')
+        raise Exception('TELNET auth error (1)')
+      tn.sock.sendall(IAC + SB + NAWS + b'\x03\xE8\x00\x20' + IAC + SE)
       if idx > 0:
         tn.prompt = obj.group()
         return tn
-      tn.write("{}\n".format(self.login).encode('ascii'))
+      tn.write(f"{self.login}\n".encode('ascii'))
       idx, obj, output = tn.expect([p_passw, prompt], timeout=2)
       if idx < 0:
-        raise Exception('')
+        raise Exception('TELNET auth error (2)')
       if idx > 0:
         tn.prompt = obj.group()
         return tn
       if password is None:
         password = self.passw
-      tn.write("{}\n".format(password).encode('ascii'))
+      tn.write(f"{password}\n".encode('ascii'))
       idx, obj, output = tn.expect([prompt], timeout=2)
       if idx < 0:
-        raise Exception('')
+        raise Exception('TELNET auth error (3)')
       tn.prompt = obj.group()
       return tn
     except Exception as e:
       #print(e)
       if verbose:
-        die("No se puede iniciar sesión en TELNET (IP: {})".format(self.ip_addr))
+        die(f"Can't login to TELNET (IP: {self.ip_addr})")
     return None
+
+  def check_ftp(self, check_upload = False, timeout = None):
+    ret = -1
+    if not timeout:
+        timeout = self.timeout
+    ftp = None
+    try:
+        ftp = ftplib.FTP(self.ip_addr, user=self.login, passwd=self.passw, timeout=timeout)
+        ftp.voidcmd("NOOP")
+        if check_upload:
+            import io
+            fp = io.BytesIO(b"HELLO_123")
+            remote_fn = '/tmp/_test_payload.bin'
+            ftp.storbinary(f'STOR {remote_fn}', fp)
+            ftp.delete(remote_fn)
+        ret = 0
+    except ftplib.error_perm as e:
+        ret = -3
+        if '500 Unknown command' in str(e):
+            ret = -11
+    except ftplib.error_proto as e:
+        ret = -2
+        if 'unrecognized option: w' in str(e):
+            ret = -10
+    except Exception as e:
+        ret = -1
+    finally:
+        if ftp:
+            try:
+                ftp.close()
+            except Exception:
+                pass        
+    return ret
 
   def get_ftp(self, verbose = 0):
     if self.ftp and self.ftp.sock:
@@ -853,7 +880,7 @@ class Gateway():
       return self.ftp
     except Exception:
       if verbose:
-        die("ftp no responde (IP: {})".format(self.ip_addr))
+        die("ftp not responding (IP: {})".format(self.ip_addr))
       self.shutdown()
     return None
 
@@ -872,138 +899,246 @@ class Gateway():
           return False
     return True
 
-  def run_cmd(self, cmd, msg = None, timeout = None, die_on_error = True):
-    ret = True
+  def run_cmd(self, command, msg = None, timeout = None, die_on_error = True):
+    error = 0
+    reslist = [ ]
+    self.errcode = -1
     if self.use_ssh:
-      ssh = self.get_ssh(self.verbose)
+        ssh = self.get_ssh(self.verbose)
     else:
-      tn = self.get_telnet(self.verbose)
-    if (msg):
-      print(msg)
-    cmdlist = []
-    if isinstance(cmd, str):      
-      cmdlist.append(cmd)
+        tn = self.get_telnet(self.verbose)
+    if msg:
+        print(msg)
+    cmdlist = [ ]
+    if isinstance(command, str):      
+        cmdlist.append(command)
     else:
-      cmdlist = cmd
+        cmdlist = command
+    if not cmdlist:
+        raise ValueError('Incorrect command list')
+    if '\n' in ';'.join(cmdlist):
+        raise ValueError('Incorrect command format (1)')
     for idx, cmd in enumerate(cmdlist):
-      if self.use_ssh:
-        channel = ssh.open_session()
-        if timeout is not None:
-          saved_timeout = ssh.get_timeout()
-          ssh.set_timeout(int(timeout * 1000))
-        #channel.pty('xterm')
-        #print("exec = '{}'".format(cmd))
-        channel.execute(cmd)
+        if self.use_ssh:
+            channel = ssh.open_session()
+            saved_timeout = ssh.get_timeout()
+            if timeout is not None:
+                ssh.set_timeout(int(timeout * 1000))
+            #channel.pty('xterm')
+            #print("exec = '{}'".format(cmd))
+            try:
+                rc = channel.execute(cmd)
+                if rc != 0:
+                    raise RuntimeError('') 
+                channel.wait_eof()
+            except ssh2.exceptions.Timeout:
+                error = -4
+            except Exception:
+                error = -5
+            finally:
+                ssh.set_timeout(100)
+                try:
+                    channel.close()
+                    channel.wait_closed()
+                except Exception:
+                    error = -6 if error == 0 else 0
+            if error != 0 and die_on_error:
+                die(f'SSH: execute command ERR={error}, CMD: "{cmd}"')
+            if error == 0:
+                self.errcode = channel.get_exit_status()
+                res = b''
+                size = 1
+                while size > 0:
+                    size, data = channel.read()
+                    if data:
+                        res += data
+                res = res.decode('latin1')
+                reslist.append(res if res != '\n' else '')
+            else:
+                self.errcode = -2
+                reslist.append(None)
+            ssh.set_timeout(saved_timeout)
+        else: # telnet
+            end = b'echo -e "\\xA6$?\\xA7\\xB8_END"'
+            try:
+                tn.write(cmd.encode('latin1') + b'\n' + end + b'\n')
+                res = tn.read_until(b'\xA7\xB8_END\r\n' + tn.prompt, timeout = 4 if timeout is None else timeout)
+                p1 = res.find(b'\r\n')
+                p2 = res.rfind(b'\r\n' + tn.prompt + end)
+                p3 = res.rfind(b'\r\n\xA6')
+                p4 = res.rfind(b'\xA7\xB8_END')
+                if p1 < 0 or p2 < 0 or p3 < 0 or p4 < 0 or p3 >= p4:
+                    if die_on_error:
+                        die('TELNET: execute command: incorrect response (1)')
+                    reslist.append(None)
+                    self.errcode = -2
+                else:
+                    self.errcode = int(res[p3+3:p4].decode(), 10)
+                    res = res[p1+2:p2].decode('latin1')
+                    res = res.replace('\r\n', '\n')
+                    reslist.append(res if res != '\n' else '')
+            except Exception as e:
+                error = -4
+                if die_on_error:
+                    die(f'TELNET: execute command error: "{e}"')
+        if error != 0:
+            break
+    if not self.use_ssh: # telnet
         try:
-          channel.wait_eof()
-        except ssh2.exceptions.Timeout:
-          ssh.set_timeout(100)
-          ret = False
-          if die_on_error:
-            die("SSH execute command timed out! CMD: \"{}\"".format(cmd))
-        if timeout is not None:
-          ssh.set_timeout(saved_timeout)
-        try:
-          channel.close()
-          channel.wait_closed()
+            tn.write(b"exit\n")
+            tn.close()
         except Exception:
-          pass
-        #status = channel.get_exit_status()
-        if not ret:
-          break
-      else:
-        cmd += '\n'
-        tn.write(cmd.encode('ascii'))
-        tn.read_until(tn.prompt, timeout = 4 if timeout is None else timeout)
-    if not self.use_ssh:
-      tn.write(b"exit\n")
-      ret = True
-    return ret
+            pass
+    if error == 0:
+        return reslist if isinstance(command, list) else reslist[0]
+    else:
+        return None
 
   def download(self, fn_remote, fn_local, verbose = 1):
     if verbose and self.verbose:
-      print('Download file: "{}" ....'.format(fn_remote))
+        print(f'Download file: "{fn_remote}" ....')
     if self.use_ssh:
-      ssh = self.get_ssh(self.verbose)
-      channel, fileinfo = ssh.scp_recv2(fn_remote)
-      total_size = fileinfo.st_size
-      read_size = 0
-      with open(fn_local, 'wb') as file:
-        while read_size < total_size:
-          size, data = channel.read()
-          if size > 0:
-            if read_size + len(data) > total_size:
-              file.write(data[:total_size - read_size])
-            else:
-              file.write(data)
-            read_size += size
+        ssh = self.get_ssh(self.verbose)
+        channel, fileinfo = ssh.scp_recv2(fn_remote)
+        total_size = fileinfo.st_size
+        read_size = 0
+        with open(fn_local, 'wb') as file:
+            while read_size < total_size:
+                size, data = channel.read()
+                if size > 0:
+                    if read_size + len(data) > total_size:
+                        file.write(data[:total_size - read_size])
+                    else:
+                        file.write(data)
+                    read_size += size
     elif self.use_ftp:
-      ftp = self.get_ftp(self.verbose)
-      file = open(fn_local, 'wb')
-      ftp.retrbinary('RETR ' + fn_remote, file.write)
-      file.close()
-    else:
-      raise RuntimeError('FIXME')
+        ftp = self.get_ftp(self.verbose)
+        with open(fn_local, 'wb') as file:
+            ftp.retrbinary('RETR ' + fn_remote, file.write)
+    else: # telnet
+        os.remove(fn_local) if os.path.exists(fn_local) else None
+        size = self.get_remote_file_size(fn_remote)
+        if size < 0:
+            return False
+        if size == 0:
+            with open(fn_local, 'wb') as file:
+                pass
+            return True
+        tn = self.get_telnet(self.verbose)
+        fin = b" ; echo 'X''_FIN_''X'"
+        blksize = 64*1000
+        filesize = 0
+        with open(fn_local, 'wb') as file:
+            while filesize < size:
+                count = blksize
+                if filesize + count > size:
+                    count = size - filesize
+                cmd = f"dd if='{fn_remote}' iflag=skip_bytes,count_bytes skip={filesize} count={count} 2>/dev/null | base64"
+                tn.write(cmd.encode('latin1') + fin + b'\n')
+                res = tn.read_until(b'X_FIN_X\r\n' + tn.prompt, timeout = 4)
+                p1 = res.find(b'\r\n')
+                p2 = res.rfind(b'X_FIN_X\r\n')
+                if p1 < 0 or p2 < 0 or p1 >= p2:
+                    break
+                data = base64.standard_b64decode(res[p1+2:p2].replace(b'\r\n', b''))
+                filesize += len(data)
+                file.write(data)
+        try:
+            tn.write(b"exit\n")
+            tn.close()
+        except Exception:
+            pass
+        if filesize != size:
+            os.remove(fn_local) if os.path.exists(fn_local) else None
+            return False
     return True
 
   def upload(self, fn_local, fn_remote, md5chk = True, verbose = 1):
     if not os.path.exists(fn_local):
-      die(f'File "{fn_local}" not found.')
+        die(f'File "{fn_local}" not found.')
     if md5chk:
-      md5_local = self.get_md5_for_local_file(fn_local)
-    file = open(fn_local, 'rb')
+        md5_local = self.get_md5_for_local_file(fn_local)
     if verbose and self.verbose:
-      print('Upload file: "{}" ....'.format(fn_local))
+        print(f'Upload file: "{fn_local}" ....')
     if self.use_ssh:
-      ssh = self.get_ssh(self.verbose)
-      finfo = os.stat(fn_local)
-      channel = ssh.scp_send64(fn_remote, finfo.st_mode & 0o777, finfo.st_size, finfo.st_mtime, finfo.st_atime)
-      size = 0
-      for data in file:
-        channel.write(data)
-        size = size + len(data)
-      #except ssh2.exceptions.SCPProtocolError as e:
+        ssh = self.get_ssh(self.verbose)
+        finfo = os.stat(fn_local)
+        channel = ssh.scp_send64(fn_remote, finfo.st_mode & 0o777, finfo.st_size, finfo.st_mtime, finfo.st_atime)
+        size = 0
+        with open(fn_local, 'rb') as file:
+            for data in file:
+                channel.write(data)
+                size = size + len(data)
+        #except ssh2.exceptions.SCPProtocolError as e:
     elif self.use_ftp:
-      ftp = self.get_ftp(self.verbose)
-      ftp.storbinary('STOR ' + fn_remote, file)
-    else:
-      raise RuntimeError('FIXME')
-    file.close()
+        ftp = self.get_ftp(self.verbose)
+        with open(fn_local, 'rb') as file:
+            ftp.storbinary('STOR ' + fn_remote, file)
+    else: # telnet
+        with open(fn_local, 'rb') as file:
+            data = file.read()
+        data = gzip.compress(data, compresslevel = 9)
+        data = base64.standard_b64encode(data)
+        fn_remote_tmp = '/tmp/_T_' + os.path.basename(fn_remote)
+        if len(fn_remote_tmp) > 80:
+            raise ValueError('Incorrect length of filename')
+        self.run_cmd(f"rm -f '{fn_remote_tmp}'")
+        tn = self.get_telnet(self.verbose)
+        filesize = 0
+        while filesize < len(data):
+            chunk = data[filesize:filesize+400]
+            if len(chunk) > 0:
+                fopt = b'>' if filesize == 0 else b'>>'
+                cmd = b"echo -n " + chunk + fopt + fn_remote_tmp.encode()
+                tn.write(cmd + b'\n')
+                res = tn.read_until(b'\r\n' + tn.prompt, timeout = 4)
+                p1 = res.find(b'echo -n ')
+                p2 = res.rfind(b'\r\n' + tn.prompt)
+                if p1 < 0 or p2 < 0 or p1 >= p2 or p2 - p1 != len(cmd):
+                    break
+            filesize += len(chunk)
+        try:
+            tn.write(b"exit\n")
+            tn.close()
+        except Exception:
+            pass
+        if filesize != len(data):
+            self.run_cmd(f"rm -f '{fn_remote_tmp}'")
+            return False
+        self.run_cmd(f"rm -f '{fn_remote}' ; cat '{fn_remote_tmp}' | base64 -d | gzip -d > '{fn_remote}'")
+        self.run_cmd(f"rm -f '{fn_remote_tmp}'")
     if md5chk:
-      md5_remote = self.get_md5_for_remote_file(fn_remote)
-      if md5_remote != md5_local:
-        if md5chk == 2:
-          die(f'File "{fn_local}" uploaded, but MD5 incorrect!')
-        #if verbose:
-        print(f'ERROR: File "{fn_local}" uploaded, but MD5 incorrect!')
-        return False
+        md5_remote = self.get_md5_for_remote_file(fn_remote)
+        if md5_remote != md5_local:
+            if md5chk == 2:
+                die(f'File "{fn_local}" uploaded, but MD5 incorrect!')
+            #if verbose:
+            print(f'ERROR: File "{fn_local}" uploaded, but MD5 incorrect!')
+            return False
     return True
-  
-  def get_md5_for_remote_file(self, fn_remote, timeout = 8):
-    fname = os.path.basename(fn_remote)
-    num = str(random.randint(10000, 1000000))
-    md5_local_fn = f"tmp/{fname}.{num}.md5"
-    md5_remote_fn = f"/tmp/{fname}.{num}.md5"
-    cmd = f'md5sum "{fn_remote}" > "{md5_remote_fn}" 2>&1'
-    rc = self.run_cmd(cmd, timeout = timeout)
-    if not rc:
-        return -5
-    os.remove(md5_local_fn) if os.path.exists(md5_local_fn) else None
-    self.download(md5_remote_fn, md5_local_fn, verbose = 0)
-    self.run_cmd(f'rm -f "{md5_remote_fn}"', timeout = 3)
-    if not os.path.exists(md5_local_fn):
-        return -4
-    with open(md5_local_fn, 'r', encoding = 'latin1') as file:
-        md5 = file.read()
-    os.remove(md5_local_fn)
-    if not md5:
-        return -3
-    if md5.startswith('md5sum:'):
-        return -2
-    md5 = md5.split(' ')[0]
-    md5 = md5.strip()
-    if len(md5) != 32:
+
+  def get_remote_file_size(self, fn_remote):
+    size = self.run_cmd(f"wc -c '{fn_remote}' 2>&1")
+    if not size:
         return -1
+    size = size.strip()
+    if size.startswith('wc:'):
+        return -2  # file not found
+    if len(size) < 3 or ' ' not in size:
+        return -3
+    size = size.split(' ')[0]
+    return int(size, 10)
+
+  def get_md5_for_remote_file(self, fn_remote, timeout = 8):
+    md5 = self.run_cmd(f"md5sum '{fn_remote}' 2>&1", timeout = timeout)
+    if not md5:
+        return -1
+    md5 = md5.strip()
+    if md5.startswith('md5sum:'):
+        return -2  # file not found
+    if len(md5) < 32:
+        return -3
+    md5 = md5[:32]
     return md5.lower()
   
   def get_md5_for_local_file(self, fn_local, size = None):
@@ -1034,6 +1169,63 @@ class Gateway():
             hasher.update(b'\0' * tail_size)
     return hasher.hexdigest()
 
+  def post_connect(self, exec_cmd, contimeout = 20, passw = 'root'):
+    self.use_ssh = True
+    if passw is not None:
+        self.passw = passw
+    ssh_en = self.ping(verbose = 0, contimeout = contimeout)  # RSA host key generate slowly!
+    if ssh_en:
+        print('#### SSH server are activated! ####')
+    else:
+        print(f"WARNING: SSH server not responding (IP: {self.ip_addr})")
+
+    if not ssh_en:
+        print("")
+        print('Unlock TelNet server ...')
+        exec_cmd("bdata set telnet_en=1 ; bdata commit")
+        print('Run TelNet server on port 23 ...')
+        exec_cmd("/etc/init.d/telnet enable ; /etc/init.d/telnet restart")
+        time.sleep(0.5)
+        self.use_ssh = False
+        telnet_en = self.ping(verbose = 2)
+        if not telnet_en:
+            print(f"ERROR: TelNet server not responding (IP: {self.ip_addr})")
+            return -2
+        print("")
+        print('#### TelNet server are activated! ####')
+        #print("")
+        #print('Run FTP server on port 21 ...')
+        cmd = r'''#!/bin/sh /etc/rc.common
+SERVICE_DAEMONIZE=1
+SERVICE_WRITE_PID=1
+start() {
+        service_start /usr/sbin/inetd -f
+}
+stop() {
+        service_stop /usr/sbin/inetd
+}
+'''
+        cmd = cmd.replace('\r\n', ';')
+        cmd = cmd.replace('\n', ';')
+        cfg = r'ftp\tstream\ttcp\tnowait\troot\t/usr/sbin/ftpd\tftpd -w\t/'
+        self.run_cmd(r"echo -e '" + cfg + "' > /etc/inetd.conf")
+        self.run_cmd(r"echo '" + cmd + "' | tr ';' '\n' > /etc/init.d/inetd")
+        self.run_cmd(r"chmod +x /etc/init.d/inetd")
+        self.run_cmd(r'/etc/init.d/inetd enable')
+        self.run_cmd(r'/etc/init.d/inetd restart')
+        ftp_en = self.check_ftp(timeout = 5)
+        if ftp_en <= -10:
+            print(f'WARNING: FTP server is running, but upload mode is blocked!')
+        elif ftp_en != 0:
+            print(f"WARNING: FTP server not responding (IP: {self.ip_addr})")
+        else:
+            self.use_ftp = True
+            print('#### FTP server are activated! ####')
+
+    if ssh_en or telnet_en:
+        self.run_cmd('nvram set uart_en=1; nvram set boot_wait=on; nvram commit')
+        self.run_cmd('nvram set bootdelay=3; nvram set bootmenu_delay=5; nvram commit')
+        return 0
 
   def run_cmd_with_output(self, cmd, timeout=None):
         output = ""
@@ -1103,7 +1295,11 @@ def create_gateway(timeout = 4, die_if_sshOk = True, die_if_ftpOk = True, web_lo
     if ret == 23:
         if gw.use_ftp and die_if_ftpOk:
             die("Telnet and FTP servers already running!")
-        print("Telnet server already running, but FTP server not respond")
+        ftp_err = gw.check_ftp(check_upload = True)
+        if ftp_err <= -10:
+            print("Telnet server already running, but upload mode on FTP server is blocked")
+        else:
+            print("Telnet server already running, but FTP server not respond")
     elif ret > 0:
         if die_if_sshOk:
             die(0, "SSH server already installed and running")
@@ -1122,4 +1318,3 @@ if __name__ == "__main__":
     gw = Gateway(detect_device = False, detect_ssh = False)
     gw.ip_addr = ip_addr
     print("Device IP-address changed to {}".format(ip_addr))
-    
