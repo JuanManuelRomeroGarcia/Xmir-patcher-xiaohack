@@ -798,7 +798,7 @@ class Gateway():
       tn = telnetlib.Telnet(self.ip_addr, timeout=4)
     except Exception as e:
       if verbose:
-        die("TELNET not responding (IP: {self.ip_addr})")
+        die(f"TELNET not responding (IP: {self.ip_addr})")
       return None
     try:
       p_login = b'login: '
@@ -810,6 +810,8 @@ class Gateway():
       tn.sock.sendall(IAC + SB + NAWS + b'\x03\xE8\x00\x20' + IAC + SE)
       if idx > 0:
         tn.prompt = obj.group()
+        tn.write(b"echo 123 >/dev/null\n")
+        tn.read_until(b'\r\n' + tn.prompt, timeout = 2)
         return tn
       tn.write(f"{self.login}\n".encode('ascii'))
       idx, obj, output = tn.expect([p_passw, prompt], timeout=2)
@@ -927,21 +929,17 @@ class Gateway():
             #channel.pty('xterm')
             #print("exec = '{}'".format(cmd))
             try:
-                rc = channel.execute(cmd)
-                if rc != 0:
-                    raise RuntimeError('') 
+                channel.execute(cmd)
                 channel.wait_eof()
             except ssh2.exceptions.Timeout:
                 error = -4
-            except Exception:
+            except ssh2.exceptions.SocketRecvError as e:
                 error = -5
+            except Exception as e:
+                error = -10
             finally:
-                ssh.set_timeout(100)
-                try:
-                    channel.close()
-                    channel.wait_closed()
-                except Exception:
-                    error = -6 if error == 0 else 0
+                channel.close()
+                channel.wait_closed()
             if error != 0 and die_on_error:
                 die(f'SSH: execute command ERR={error}, CMD: "{cmd}"')
             if error == 0:
@@ -1011,6 +1009,9 @@ class Gateway():
                     else:
                         file.write(data)
                     read_size += size
+        channel.send_eof()
+        channel.wait_eof()
+        channel.wait_closed()
     elif self.use_ftp:
         ftp = self.get_ftp(self.verbose)
         with open(fn_local, 'wb') as file:
@@ -1069,6 +1070,9 @@ class Gateway():
             for data in file:
                 channel.write(data)
                 size = size + len(data)
+        channel.send_eof()
+        channel.wait_eof()
+        channel.wait_closed()
         #except ssh2.exceptions.SCPProtocolError as e:
     elif self.use_ftp:
         ftp = self.get_ftp(self.verbose)
@@ -1170,6 +1174,7 @@ class Gateway():
     return hasher.hexdigest()
 
   def post_connect(self, exec_cmd, contimeout = 20, passw = 'root'):
+    telnet_en = False
     self.use_ssh = True
     if passw is not None:
         self.passw = passw
@@ -1181,7 +1186,6 @@ class Gateway():
 
     if not ssh_en:
         print("")
-        print('Unlock TelNet server ...')
         exec_cmd("bdata set telnet_en=1 ; bdata commit")
         print('Run TelNet server on port 23 ...')
         exec_cmd("/etc/init.d/telnet enable ; /etc/init.d/telnet restart")
@@ -1189,43 +1193,121 @@ class Gateway():
         self.use_ssh = False
         telnet_en = self.ping(verbose = 2)
         if not telnet_en:
+            # FIXME
             print(f"ERROR: TelNet server not responding (IP: {self.ip_addr})")
             return -2
-        print("")
         print('#### TelNet server are activated! ####')
-        #print("")
-        #print('Run FTP server on port 21 ...')
-        cmd = r'''#!/bin/sh /etc/rc.common
-SERVICE_DAEMONIZE=1
-SERVICE_WRITE_PID=1
-start() {
-        service_start /usr/sbin/inetd -f
-}
-stop() {
-        service_stop /usr/sbin/inetd
-}
-'''
-        cmd = cmd.replace('\r\n', ';')
-        cmd = cmd.replace('\n', ';')
-        cfg = r'ftp\tstream\ttcp\tnowait\troot\t/usr/sbin/ftpd\tftpd -w\t/'
-        self.run_cmd(r"echo -e '" + cfg + "' > /etc/inetd.conf")
-        self.run_cmd(r"echo '" + cmd + "' | tr ';' '\n' > /etc/init.d/inetd")
-        self.run_cmd(r"chmod +x /etc/init.d/inetd")
-        self.run_cmd(r'/etc/init.d/inetd enable')
-        self.run_cmd(r'/etc/init.d/inetd restart')
-        ftp_en = self.check_ftp(timeout = 5)
-        if ftp_en <= -10:
-            print(f'WARNING: FTP server is running, but upload mode is blocked!')
-        elif ftp_en != 0:
-            print(f"WARNING: FTP server not responding (IP: {self.ip_addr})")
-        else:
-            self.use_ftp = True
-            print('#### FTP server are activated! ####')
 
     if ssh_en or telnet_en:
         self.run_cmd('nvram set uart_en=1; nvram set boot_wait=on; nvram commit')
         self.run_cmd('nvram set bootdelay=3; nvram set bootmenu_delay=5; nvram commit')
+
+    if ssh_en:
         return 0
+
+    if telnet_en:
+        self.install_dropbearmulti(force = False, die_on_error = True)
+        return 0
+
+    return -1
+   
+  def install_dropbearmulti(self, force = True, die_on_error = False):
+    rc, msg = self._install_dropbearmulti(force = force)
+    if rc and die_on_error:
+        die(msg)
+    return rc, msg
+    
+  def _install_dropbearmulti(self, force = True):
+    if True:
+        arch = self.run_cmd("cat /etc/openwrt_release | grep DISTRIB_ARCH=")
+        if not arch:
+            return 10, 'TELNET: Cannot read remote file /etc/openwrt_release'
+        pos = arch.find("DISTRIB_ARCH='")
+        if pos < 0:
+            return 20, 'TELNET: Cannot detect arch for remote device'
+        arch = arch[pos+1:].split("'")[1]
+        print(f'ARCH = {arch}')
+        arch_suffix = None
+        if arch.startswith('arm_'):
+            arch_suffix = '_armv7a' if 'neon-vfp' in arch else '_armv5'
+        if arch.startswith('aarch64'):
+            arch_suffix = '_arm64'
+        if arch.startswith('mips'):
+            arch_suffix = '_mips'
+        if not arch_suffix:
+            return 30, f'TELNET: Unknown arch = "{arch}"'
+        self.run_cmd(r'echo -e "root\nroot" | passwd root')
+        self.run_cmd(r'kill -9 `pgrep dropbearmulti` &>/dev/null')
+        fn_local = f'data/payload_ssh/dropbearmulti{arch_suffix}'
+        fn_remote = '/tmp/dropbearmulti'
+        md5_local = self.get_md5_for_local_file(fn_local)
+        if not(md5_local) or isinstance(md5_local, int) or len(md5_local) != 32:
+            return 40, f'File "{fn_local}" not found'
+        md5 = self.get_md5_for_remote_file(fn_remote)
+        if md5 != md5_local:
+            if not self.upload(fn_local, fn_remote):
+                return 50, f'TELNET: Cannot upload file "{fn_local}" to device'
+        self.run_cmd('chmod +x /tmp/dropbearmulti')
+        self.run_cmd('[ -d /etc/dropbear ] || { mkdir -p /etc/dropbear ; chown root /etc/dropbear ; chmod 0755 /etc/dropbear; }')
+        if False:
+            # generate host keys
+            fn = '/etc/dropbear/dropbear_ed25519_host_key'
+            fsize = self.get_remote_file_size(fn)
+            if not fsize or fsize <= 0:
+                self.run_cmd(f'rm -f {fn} ; /tmp/dropbearmulti dropbearkey -t ed25519 -f {fn} 2>&- >&-', timeout = 11)
+            fn = '/etc/dropbear/dropbear_ecdsa_host_key'
+            fsize = self.get_remote_file_size(fn)
+            if not fsize or fsize <= 0:
+                self.run_cmd(f'rm -f {fn} ; /tmp/dropbearmulti dropbearkey -t ecdsa -f {fn} 2>&- >&-', timeout = 11)
+            # run dropbearmulti
+            self.run_cmd('/tmp/dropbearmulti -p 122')
+            pass
+        print(f'Install XMiR-SSH ...')
+        xdir = '/etc/crontabs/dropbearmulti'
+        fn_bin = '/usr/sbin/dropbear'
+        fn_BIN = f'{xdir}/dropbear'
+        fn_conf = '/etc/config/dropbear'
+        fn_CONF = f'{xdir}/uci.cfg'
+        fn_initd = '/etc/init.d/dropbear'
+        fn_INITD = f'{xdir}/init.d.sh'
+        fn_INSTALL = f'{xdir}/install.sh'
+        fsize_bin = self.get_remote_file_size(fn_bin)
+        fsize_initd = self.get_remote_file_size(fn_initd)
+        if fsize_bin and fsize_initd and fsize_bin > 0 and fsize_initd > 0:
+            msg = 'SSH: dropbear is found, but it cannot run!'
+            if not force:
+                return 60, msg
+        # install XMiR dropbear
+        self.run_cmd(f'kill -9 `pgrep dropbear` &>/dev/null')
+        #self.run_cmd(f'rm -f {fn_bin} &>/dev/null')
+        self.run_cmd(f'rm -f {fn_conf} &>/dev/null')
+        self.run_cmd(f'mkdir -p {xdir}')
+        self.run_cmd(f'cp -f /tmp/dropbearmulti {fn_BIN}')
+        self.run_cmd(f'chmod +x {fn_BIN}')
+        if not self.upload('data/payload_ssh/dropbear.uci.cfg', fn_CONF):
+            return 70, f'TELNET: Cannot upload file "{fn_CONF}" to device'
+        if not self.upload('data/payload_ssh/dropbear2.init.d.sh', fn_INITD):
+            return 73, f'TELNET: Cannot upload file "{fn_INITD}" to device'
+        if not self.upload('data/payload_ssh/dropbear2.install.sh', fn_INSTALL):
+            return 76, f'TELNET: Cannot upload file "{fn_INSTALL}" to device'
+        uci = [ "uci set firewall.dropbearmulti=include",
+                "uci set firewall.dropbearmulti.type='script'",
+               f"uci set firewall.dropbearmulti.path='{fn_INSTALL}'",
+                "uci set firewall.dropbearmulti.enabled='1'",
+                "uci commit firewall",
+              ]
+        self.run_cmd(';'.join(uci))
+        self.run_cmd(f'chmod +x {fn_INITD} ; chmod +x {fn_INSTALL}')
+        print(f'Run XMiR-SSH ...')
+        self.run_cmd(f'{fn_INSTALL}', timeout = 20)
+        self.use_ssh = True
+        ssh_en = self.ping(verbose = 0, contimeout = 8)
+        if ssh_en:
+            print('#### XMiR-SSH server are activated! ####')
+            return 0, ''
+        return 90, f"installed XMiR-SSH server not responding (IP: {self.ip_addr})"
+    return 1, 'unknown error'
+
 
   def run_cmd_with_output(self, cmd, timeout=None):
         output = ""
@@ -1283,7 +1365,7 @@ def import_module(mod_name, gw):
         mod_object.inited_gw = gw
     mod_spec.loader.exec_module(mod_object)
 
-def create_gateway(timeout = 4, die_if_sshOk = True, die_if_ftpOk = True, web_login = True, ssh_port = 22):
+def create_gateway(timeout = 4, die_if_sshOk = True, die_if_ftpOk = True, web_login = True, ssh_port = 22, try_telnet = False):
     gw = Gateway(timeout = timeout, detect_ssh = False)
     if gw.status < 1:
         die(f"Xiaomi Mi Wi-Fi device not found (IP: {gw.ip_addr})")
@@ -1292,17 +1374,48 @@ def create_gateway(timeout = 4, die_if_sshOk = True, die_if_ftpOk = True, web_lo
     print(f"mac_address = {gw.mac_address}")
     gw.ssh_port = ssh_port if ssh_port else 22
     ret = gw.detect_ssh(verbose = 1, interactive = True)
-    if ret == 23:
-        if gw.use_ftp and die_if_ftpOk:
-            die("Telnet and FTP servers already running!")
-        ftp_err = gw.check_ftp(check_upload = True)
-        if ftp_err <= -10:
-            print("Telnet server already running, but upload mode on FTP server is blocked")
-        else:
-            print("Telnet server already running, but FTP server not respond")
-    elif ret > 0:
+    while ret == 23:
+        ret = 0
+        if not try_telnet:
+            break
+        print(f'Detected running TELNET server. Try to start SSH server...')
+        if gw.passw and gw.passw != 'root':
+            print('Default TELNET password =', gw.passw)
+        gw.shutdown()
+        tn = gw.get_telnet(verbose = 0, password = gw.passw)
+        if not tn:
+            print(f'WARNING: Cannot connect to TELNET server')
+            break
+        gw.use_ssh = False
+        gw.run_cmd(r"sed -i 's/release/XXXXXX/g' /etc/init.d/dropbear")
+        gw.run_cmd(r"nvram set ssh_en=1 ; nvram set boot_wait=on ; nvram set bootdelay=3 ; nvram commit")
+        gw.run_cmd(r"echo -e 'root\nroot' | passwd root", die_on_error = False)
+        gw.shutdown()
+        time.sleep(1)
+        gw.passw = 'root'
+        print(f'Use new password for root user = "{gw.passw}"')
+        tn = gw.get_telnet(verbose = 0, password = gw.passw)
+        if not tn:
+            print(f'WARNING: Cannot connect to TelNet server')
+            break
+        gw.shutdown()
+        gw.run_cmd(r"/etc/init.d/dropbear enable; /etc/init.d/dropbear restart")
+        time.sleep(1)
+        ret = gw._detect_ssh(verbose = 1, interactive = True)
+        if ret > 0:
+            break # Ok
+        print(f'Cannot start stock SSH server. Try to start XMiR-SSH server...')
+        rc, msg = gw.install_dropbearmulti(force = True)
+        if rc != 0:
+            print('ERROR:', msg)
+            break
+        ret = gw._detect_ssh(verbose = 1, interactive = True)
+        if ret <= 0:
+            print('ERROR: installed XMiR-SSH server not responding!')
+        break
+    if ret > 0:
         if die_if_sshOk:
-            die(0, "SSH server already installed and running")
+            die(0, f"SSH server already installed and running (port = {ret})")
     ccode = gw.device_info["countrycode"]
     print(f'CountryCode = {ccode}')
     if web_login:
@@ -1318,3 +1431,4 @@ if __name__ == "__main__":
     gw = Gateway(detect_device = False, detect_ssh = False)
     gw.ip_addr = ip_addr
     print("Device IP-address changed to {}".format(ip_addr))
+    

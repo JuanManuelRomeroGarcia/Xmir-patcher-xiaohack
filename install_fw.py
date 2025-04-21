@@ -1116,8 +1116,6 @@ class XqFlash():
         else:
             import ssh2
             print('Send command "reboot" via SSH/Telnet ...')
-            gw.run_cmd("reboot -f", die_on_error = False)
-            print("Forced REBOOT activated!")
             try:
                 gw.run_cmd("reboot -f", die_on_error = False)
                 print("Forced REBOOT activated!")
@@ -1163,4 +1161,3 @@ print(f"fw_img: {xf.fw_img.data_size // 1024} KiB |",
       f"rootfs: {xf.rootfs.data_size // 1024} KiB")
 
 xf.flash()
-
