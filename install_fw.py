@@ -1092,39 +1092,35 @@ class XqFlash():
             self.flash_data_to_mtd('rootfs', rootfs, timeout = 60)
 
         if not self.img_write:
-            die('===== Flash TEST is over =====')
+            die('===== La prueba Flash ha terminado =====')
 
         if self.install_fw_num is not None:
-            print("Run scripts for change NVRAM params...")
+            print("Ejecutar scripts para cambiar los parámetros NVRAM...")
             activate_boot.uboot_boot_change(gw, self.install_fw_num)
             if hasattr(kernel, 'partname') and kernel.partname:
-                print(f'Boot from partition "{kernel.partname}" activated. [{self.install_fw_num}]')
+                print(f'Arrancar desde la partición "{kernel.partname}" activado. [{self.install_fw_num}]')
             else:
-                print(f'Boot from firmware [{self.install_fw_num}] activated.')
+                print(f'Arrancar desde el firmware [{self.install_fw_num}] activated.')
             nvram = self.dev.get_nvram()
             if 'flag_boot_rootfs' not in nvram:
-                die(f'Parameter "flag_boot_rootfs" not founeded into nvram')
+                die(f'El parámetro "flag_boot_rootfs" no está integrado en la NVRAM')
             flag_boot_rootfs = int(nvram['flag_boot_rootfs'])
             if flag_boot_rootfs != self.install_fw_num:
-                die(f'Parameter flag_boot_rootfs = {flag_boot_rootfs} , but expected [{self.install_fw_num}]')
+                die(f'Parámetro flag_boot_rootfs = {flag_boot_rootfs} , pero esperado [{self.install_fw_num}]')
 
-        print("The firmware has been successfully flashed!")
+        print("¡El firmware ha sido actualizado exitosamente!")
 
         if self.install_method == 100:
             gw.run_cmd("sync ; umount -a", timeout = 5)
-            print("Please, reboot router!")
+            print("¡Por favor, reinicie el enrutador!")
         else:
             import ssh2
-            print('Send command "reboot" via SSH/Telnet ...')
-            try:
-                gw.run_cmd("reboot -f", die_on_error = False)
-                print("Forced REBOOT activated!")
-            except ssh2.exceptions.SocketRecvError as e:
-                print("Forced REBOOT Activated!")
-                pass 
+            print('Enviar comando "reiniciar" vía SSH/Telnet ...')
+            gw.run_cmd("reboot -f", die_on_error = False, reboot = True)
+            print("¡REINICIO forzado activado!")
 
     def flash_data_to_mtd(self, img_name, img: Image, timeout, check = True):
-        print(f'Writing {img_name} image to addr 0x{img.addr:08X} ...')
+        print(f'Escribiendo {img_name} imagen a dirección 0x{img.addr:08X} ...')
         print(f"  {img.cmd}")
         partname = img.partname
         size = os.path.getsize(img.fn_local)
@@ -1134,12 +1130,12 @@ class XqFlash():
             return True
         rc = self.gw.run_cmd(img.cmd, timeout = timeout, die_on_error = True)
         if rc is None:
-            print(f'  ERROR: cannot flash data to partition "{partname}"')
+            print(f'  ERROR: no se pueden flashear los datos a la partición "{partname}"')
             return False
         if check:
             md5 = self.dev.get_md5_for_mtd_data(partname, offset = 0, size = size)
             if md5 != md5_orig:
-                die(f'Flashed data corrupted! Partition "{partname}" md5: {md5}')
+                die(f'¡Los datos flasheados están corruptos! Partición "{partname}" md5: {md5}')
                 return False
         return True
 
