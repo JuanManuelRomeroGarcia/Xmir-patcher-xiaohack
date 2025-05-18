@@ -120,7 +120,7 @@ mi(106,"RP03")          # Xiaomi Whole House BE3600 Pro Network Cable Version (C
 
 mi(109,"RD03V2")        # Xiaomi AX3000T 2025 (CN)  (ipq5018)
 mi(0,  "RP04")
-mi(0,  "RP08")    
+mi(0,  "RP08")          # (INT)
 
 # https://wikidevi.wi-cat.ru/List_of_Xiaomi_Wireless_Devices
 
