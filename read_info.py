@@ -552,7 +552,7 @@ class DevInfo():
     self.kcmdline = env.var
     #self.kcmdline = type("Names", [object], self.kcmdline)
     return self.kcmdline
-  
+
   def get_kernel_version(self, verbose = None):
     verbose = verbose if verbose is not None else self.verbose
     self.kernel_ver_stamp = None
@@ -580,7 +580,7 @@ class DevInfo():
     if verbose:
         print(f"  Kernel version: {self.kernel_ver_stamp}")
     return self.kernel_version
- 
+
   def get_nvram(self, verbose = None, retdict = True):
     verbose = verbose if verbose is not None else self.verbose
     self.nvram = {} if retdict else None

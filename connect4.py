@@ -40,7 +40,7 @@ if not info or info["code"] != 0:
     die('Cannot get init_info')
 
 ccode = info["countrycode"]
-print(f'Actual CountryCode = {ccode}')
+print(f'Current CountryCode = {ccode}')
 
 stok = gw.web_login()
 

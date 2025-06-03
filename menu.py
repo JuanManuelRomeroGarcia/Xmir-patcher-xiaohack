@@ -56,7 +56,7 @@ def menu1_show():
   if update_message:
     print(f' 8 - {YELLOW_BOLD}{{{{ Otras funciones }}}} ACTUALIZAR XMIR{RESET}')
   else:
-      print(' 8 - {{{ Otras funciones }}}')
+    print(' 8 - {{{ Otras funciones }}}')
   print(' 9 - [[ Reiniciar dispositivo ]]')
   print(' 10 - [[ SSH ]]')
   print(' 11 - [[ Apoyar el proyecto (Donaciones) ]]')

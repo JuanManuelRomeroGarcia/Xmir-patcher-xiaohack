@@ -810,8 +810,6 @@ class Gateway():
       tn.sock.sendall(IAC + SB + NAWS + b'\x03\xE8\x00\x20' + IAC + SE)
       if idx > 0:
         tn.prompt = obj.group()
-        tn.write(b"echo 123 >/dev/null\n")
-        tn.read_until(b'\r\n' + tn.prompt, timeout = 2)
         return tn
       tn.write(f"{self.login}\n".encode('ascii'))
       idx, obj, output = tn.expect([p_passw, prompt], timeout=2)
@@ -901,7 +899,7 @@ class Gateway():
           return False
     return True
 
-  def run_cmd(self, command, msg = None, timeout = None, die_on_error = True, reboot = False):
+  def run_cmd(self, command, msg = None, timeout = None, die_on_error = True):
     error = 0
     reslist = [ ]
     self.errcode = -1
@@ -938,10 +936,6 @@ class Gateway():
             except Exception as e:
                 error = -10
             finally:
-                if reboot:
-                  self.shutdown()
-                  self.errcode = 0
-                  return ''
                 channel.close()
                 channel.wait_closed()
             if error != 0 and die_on_error:
@@ -1233,7 +1227,7 @@ class Gateway():
         print(f'ARCH = {arch}')
         arch_suffix = None
         if arch.startswith('arm_'):
-            arch_suffix = '_armv7a' if 'neon-vfp' in arch else '_armv5'
+            arch_suffix = '_armv7a'
         if arch.startswith('aarch64'):
             arch_suffix = '_arm64'
         if arch.startswith('mips'):
