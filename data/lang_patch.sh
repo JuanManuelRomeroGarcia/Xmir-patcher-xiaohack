@@ -77,6 +77,7 @@ MAIN_LANG=$( uci -q get luci.main.lang )
 uci set luci.languages.ru=Русский
 uci set luci.languages.en=English
 uci set luci.languages.es=Español
+uci set luci.languages.pt=Português
 uci commit luci
 
 # reload luci
