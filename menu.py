@@ -50,7 +50,7 @@ def menu1_show():
   print(' 2 - Conectar al dispositivo (instalar exploit)')
   print(' 3 - Leer información completa del dispositivo')
   print(' 4 - Crear una copia de seguridad completa')
-  print(' 5 - Instalar idiomas ES/EN/RU')
+  print(' 5 - Instalar idiomas ES/EN/RU/PT-BR')
   print(' 6 - Potencia de Antenas Wifi')
   print(' 7 - Instalar firmware (desde el directorio "firmware")')
   if update_message:
